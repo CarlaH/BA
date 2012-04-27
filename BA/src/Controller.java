@@ -1,162 +1,172 @@
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.text.DecimalFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
+
+import com.google.common.base.Joiner;
+import com.google.common.io.Files;
 
 
 public class Controller {
-	ArrayList<short[]> data;
 	
-	// Genauigkeit der Daten: eine Stelle weniger wird zu ungenau, deformiert gesamtes Skelett
-	// Java-Prozessgroesse: 436,5 MB
-	float faktor = 100f;
-	String format = "0,00";
+	final File outFile = new File("patterns.csv");
+	final File inputDir = new File("D:/Studium/Semester06_So12/Bachelorarbeit/KinectData");
 	
-	long start;
-	long ende;
-	float[] firstLine;
+	// Genauigkeit der Daten:
+	final float faktor = 100f;
+	final String format = "0,00";
+	final DecimalFormat decf = new DecimalFormat(format);
+
 	
-	public Controller(){
+	final float[] firstLine = new float[60];
+	final ArrayList<short[]> data = new ArrayList<short[]>();
+
+	public Controller() {
+		
 		//init Data: read from files, parse, store in data
-		start = System.currentTimeMillis();
-		data = new ArrayList<short[]>();
-		//File dir = new File("KinectData");
-		File dir = new File("D:/Studium/Semester06_So12/Bachelorarbeit/KinectData");
-		File[] fileList = dir.listFiles();
-		int anz = fileList.length;
+		final long start = System.currentTimeMillis();
+			
+		File[] fileList = inputDir.listFiles();
+		
 		int count = 0;
-		int max = 0;
-		short[] help = null;
-		
-		for (File f : fileList) { // for each file in this directory
+		for (File f : fileList) { 
 			count++;
-			System.out.println(f.getName() + " - reading " + count + "/"+ anz + "...");
+			System.out.println(f.getName() + " - reading " + count + "/" + 
+					fileList.length + "...");
+			
 			try {
-				// read file content
-				BufferedReader br = new BufferedReader(new FileReader(f));
-				String strLine;
-				String[] s;
-				short[] d;
+				List<String> lines = Files.readLines(f, Charset.forName("UTF-8"));
 				
-				while ((strLine = br.readLine()) != null) { // for each line
-					s = strLine.split(";");
-					d = new short[60];
-					int di = 0;
-					short newValue = 0;
-					if(help==null){ // first line of first file
-						help = new short[60];
-						firstLine = new float[60];
-						for (int i = 1; i < s.length; i++) {
-							if(i%4==0){
-								//leave out
-							}else{
-								help[di] = (short) (new DecimalFormat(format).parse(s[i]).floatValue() * faktor);
-								//System.out.println(help[di]);
-								firstLine[di] = Math.round(new DecimalFormat(format).parse(s[i]).floatValue() *faktor)/faktor;
-								//System.out.println(firstLine[di]);
-								//System.out.println("help " + di + ": " + s[i] + " => " + help[di]);
-								di++;
-							}
-						}
-					} else { // not first line of first file
-						for (int i = 1; i < s.length; i++) { // add numbers difference to int[]; actual number: x*10^-p
-							if (i%4==0) {
-								// leave out
-							} else {
-								newValue = (short) (new DecimalFormat(format).parse(s[i]).floatValue() * faktor);
-								d[di] = (short)(newValue - help[di]);
-								if(d[di]>max){
-									max = d[di];
-								}
-								//System.out.println(newValue + " - " + help[di] + " = " + d[di]);
-								help[di] = newValue;
-								di++;
-							}
-						}
-					}
-					data.add(d); // add new Array to data
-				} // end for each line
+				if (lines.isEmpty()) continue;
 				
+				short[] prev = null;
+				for (String strLine : lines) {
+					short[] d = processLine(strLine, prev);
+					data.add(d);
+					prev = d;
+				}
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			} finally {
 				System.out.println("...reading complete");
-			} catch (Exception e) {
-				e.printStackTrace();
 			}
-		} // end for each file
-		ende = System.currentTimeMillis();
-		System.out.println("Dauer Einlesen: " + (ende-start));
-		System.out.println("Größe von data: " + data.size() + ", Maximaler Wert: " + max);
+		}
 		
-		while(true){}
-		
+		final long ende = System.currentTimeMillis();
+		System.out.println("Dauer Einlesen: " + (ende - start));
+		System.out.println("GrÃ¶ÃŸe von data: " + data.size());
+
 		// HashMap mit Startindex und Anzahl Frames
-//		HashMap<Integer,Integer> indices = new HashMap<Integer,Integer>();
-//		indices.put(3100, 120);
-//		indices.put(6000, 500);
-//		convertForViewer(indices);
+		final HashMap<Integer,Integer> indices = new HashMap<Integer, Integer>();
+		indices.put(3100, 120);
+		indices.put(6000, 500);
+		
+		convertForViewer(indices, data);
 	}
+
+	private short[] processLine(String strLine, short[] prev) throws ParseException 
+	{	
+		String[] s = strLine.split(";");
+		short[] d = new short[60];
+		int di = 0;
+
+		for (int i = 1; i < s.length; i++) {
+			
+			if (i % 4 == 0) continue;
+			
+			short newValue = (short) (decf.parse(s[i]).floatValue() * faktor);
+			
+			if (prev == null) {
+				firstLine[di] = Math.round(decf.parse(s[i]).floatValue() * faktor) / faktor;
+				d[di] = newValue;
+			} else {
+				
+				if (Math.abs(newValue - prev[di]) > Short.MAX_VALUE) {
+					System.err.println("unsafe short casting");
+					System.exit(1);
+				}
+				
+				d[di] = (short) (newValue - prev[di]);				
+			}
+			
+			di++;
+		}
+		return d;
+	}
+
 	
-	
+	private void updateCurrentPoint(float[] l, short[] diff) {
+		for (int j = 0; j < l.length; j++) {
+			l[j] = l[j] + ((float)diff[j]) / faktor;
+		}
+	}
+
 	/**
-	 * Durchlaeuft Vektoren-Array, berechnet jeweils den aktuellen Punktdatensatz und schreibt diesen in eine Datei,
-	 * falls er zu einem gefundenen Pattern gehört
-	 * @param indices HashMap die die Position als key und Laenge als value der gefundenen Patterns enthaelt
+	 * Durchlaeuft Vektoren-Array, berechnet jeweils den aktuellen Punktdatensatz 
+	 * und schreibt diesen in eine Datei, falls er zu einem gefundenen Pattern gehÃ¶rt
+	 * @param indices HashMap die die Position als key und Laenge als value 
+	 * der gefundenen Patterns enthaelt
+	 * @param data2 
 	 */
-	private void convertForViewer(HashMap<Integer,Integer> indices){
+	private void convertForViewer(HashMap<Integer, Integer> indices, ArrayList<short[]> data) 
+	{
 		StringBuffer buff = new StringBuffer();
 		int ms = 0;
 		short[] d;
-		float[] l = new float[60];
-		for (int i = 0; i < l.length; i++) {  // beginnend vom ersten Datensatz Punkte...
-			l[i] = firstLine[i];  
-		}  
+		float[] l = firstLine;
 		
 		for (int i = 0; i < data.size(); i++) {
-			d = data.get(i);
-			for (int j = 0; j < l.length; j++) {    // ..die Vektoren immer aufrechnen um wieder Punkte zu erhalten
-				l[j] = l[j] + ((float)d[j])/faktor;
-			}
 			
-			if(indices.containsKey(i)){
-				int end = indices.get(i);
-				for (int j = 0; j < end; j++) {
-					buff.append(ms+";");
+			d = data.get(i);
+			// ..die Vektoren immer aufrechnen um wieder Punkte zu erhalten
+			updateCurrentPoint(l, d);
+
+			if (indices.containsKey(i)) {
+				int sequenceLength = indices.get(i);
+								
+				for (int j = 0; j < sequenceLength; j++) {
+					buff.append(ms + ";");
 					for (int k = 0; k < l.length; k++) {
 						buff.append(l[k] + ";");
-						if((k+1)%3 == 0){
+						if ((k + 1) % 3 == 0) {
 							buff.append("1;");
 						}
 					}
-					ms += 33;
 					buff.append("\n");
 					
-					i++;  // i weiter hochzaehlen und naechsten Datensatz berechnen
+					ms += 33;
+					i++; 					
+					
+					if (i >= data.size()) break;
+					
 					d = data.get(i);
-					for (int y = 0; y < l.length; y++) {
-						l[y] = l[y] + ((float)d[y])/faktor;
-					}
+					updateCurrentPoint(l, d);
 				}
-				for (int k = 0; k < 30; k++) { // am Ende der Sequenz eine Sekunde lang Nuller
-					buff.append("0;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;");
-					buff.append("0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1;0;0;0;1\n");
-				}  // danach wieder weiter Punkt-Datensaetze berechnen bis wieder i in indices
+				
+				String origin = "0;0;0;1";
+				int numFrames = 30; 
+				int numJoints = 19;
+				
+				String[] originPoints = new String[numFrames * numJoints]; 
+				Arrays.fill(originPoints, origin);
+				
+				String originPointsString = Joiner.on(";").join(originPoints);
+				
+				buff.append("0;");
+				buff.append(originPointsString);
+				buff.append("\n");
 			}
 		}
-		
-		String filename = "patterns.csv";
-		FileWriter writer;
+
 		try {
-			writer = new FileWriter(filename, false);
-			writer.write(buff.toString().replace(".", ","));
-			writer.close();
+			Files.write(buff.toString().replace(".", ",").getBytes(), outFile);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
 	}
-
-
 }
