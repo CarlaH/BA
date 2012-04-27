@@ -9,11 +9,12 @@ import java.util.HashMap;
 
 
 public class Controller {
-	ArrayList<int[]> data;
+	ArrayList<short[]> data;
 	
-	// Genauigkeit der Daten:
-	float faktor = 1000000f;
-	String format = "0,000000";
+	// Genauigkeit der Daten: eine Stelle weniger wird zu ungenau, deformiert gesamtes Skelett
+	// Java-Prozessgroesse: 436,5 MB
+	float faktor = 100f;
+	String format = "0,00";
 	
 	long start;
 	long ende;
@@ -22,14 +23,14 @@ public class Controller {
 	public Controller(){
 		//init Data: read from files, parse, store in data
 		start = System.currentTimeMillis();
-		data = new ArrayList<int[]>();
-		File dir = new File("KinectData");
-		//File dir = new File("D:/Studium/Semester06_So12/Bachelorarbeit/KinectData");
+		data = new ArrayList<short[]>();
+		//File dir = new File("KinectData");
+		File dir = new File("D:/Studium/Semester06_So12/Bachelorarbeit/KinectData");
 		File[] fileList = dir.listFiles();
 		int anz = fileList.length;
 		int count = 0;
 		int max = 0;
-		int[] help = null;
+		short[] help = null;
 		
 		for (File f : fileList) { // for each file in this directory
 			count++;
@@ -39,37 +40,35 @@ public class Controller {
 				BufferedReader br = new BufferedReader(new FileReader(f));
 				String strLine;
 				String[] s;
-				int[] d;
+				short[] d;
 				
 				while ((strLine = br.readLine()) != null) { // for each line
 					s = strLine.split(";");
-					d = new int[60];
+					d = new short[60];
 					int di = 0;
-					int newValue = 0;
+					short newValue = 0;
 					if(help==null){ // first line of first file
-						help = new int[60];
+						help = new short[60];
 						firstLine = new float[60];
 						for (int i = 1; i < s.length; i++) {
 							if(i%4==0){
 								//leave out
-								//System.out.println("help leave out");
 							}else{
-								help[di] = (int) (new DecimalFormat(format).parse(s[i]).floatValue() * faktor);
-								firstLine[di] = new DecimalFormat(format).parse(s[i]).floatValue();
+								help[di] = (short) (new DecimalFormat(format).parse(s[i]).floatValue() * faktor);
+								//System.out.println(help[di]);
+								firstLine[di] = Math.round(new DecimalFormat(format).parse(s[i]).floatValue() *faktor)/faktor;
 								//System.out.println(firstLine[di]);
 								//System.out.println("help " + di + ": " + s[i] + " => " + help[di]);
 								di++;
 							}
 						}
-						//System.out.println("help initialized");
-					} else { // not first line of file
-						//System.out.println("next line");
-						for (int i = 1; i < s.length; i++) { // add numbers difference to int[]; actual number: x*10^-6
+					} else { // not first line of first file
+						for (int i = 1; i < s.length; i++) { // add numbers difference to int[]; actual number: x*10^-p
 							if (i%4==0) {
 								// leave out
 							} else {
-								newValue = (int) (new DecimalFormat(format).parse(s[i]).floatValue() * faktor);
-								d[di] = newValue - help[di];
+								newValue = (short) (new DecimalFormat(format).parse(s[i]).floatValue() * faktor);
+								d[di] = (short)(newValue - help[di]);
 								if(d[di]>max){
 									max = d[di];
 								}
@@ -89,13 +88,15 @@ public class Controller {
 		} // end for each file
 		ende = System.currentTimeMillis();
 		System.out.println("Dauer Einlesen: " + (ende-start));
-		System.out.println("Größe von data: " + data.size());
+		System.out.println("Größe von data: " + data.size() + ", Maximaler Wert: " + max);
+		
+		while(true){}
 		
 		// HashMap mit Startindex und Anzahl Frames
-		HashMap<Integer,Integer> indices = new HashMap<Integer,Integer>();
-		indices.put(3100, 120);
-		indices.put(6000, 500);
-		convertForViewer(indices);
+//		HashMap<Integer,Integer> indices = new HashMap<Integer,Integer>();
+//		indices.put(3100, 120);
+//		indices.put(6000, 500);
+//		convertForViewer(indices);
 	}
 	
 	
@@ -107,7 +108,7 @@ public class Controller {
 	private void convertForViewer(HashMap<Integer,Integer> indices){
 		StringBuffer buff = new StringBuffer();
 		int ms = 0;
-		int[] d;
+		short[] d;
 		float[] l = new float[60];
 		for (int i = 0; i < l.length; i++) {  // beginnend vom ersten Datensatz Punkte...
 			l[i] = firstLine[i];  
@@ -149,7 +150,7 @@ public class Controller {
 		FileWriter writer;
 		try {
 			writer = new FileWriter(filename, false);
-			writer.write(buff.toString());
+			writer.write(buff.toString().replace(".", ","));
 			writer.close();
 		} catch (IOException e) {
 			e.printStackTrace();
