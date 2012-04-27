@@ -5,10 +5,10 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 
 
@@ -62,14 +62,16 @@ public class Controller {
 		System.out.println("Größe von data: " + data.size());
 
 		// HashMap mit Startindex und Anzahl Frames
-		final HashMap<Integer,Integer> indices = new HashMap<Integer, Integer>();
-		indices.put(3100, 120);
-		indices.put(6000, 500);
+		final ImmutableMap<Integer,Integer> indices = 
+				new ImmutableMap.Builder<Integer, Integer>()
+					.put(3100, 120)
+					.put(6000, 500)
+					.build();
 		
 		convertForViewer(indices, data);
 	}
 
-	private short[] processLine(String strLine, short[] prev) throws ParseException 
+	private short[] processLine(final String strLine, final short[] prev) throws ParseException 
 	{	
 		String[] s = strLine.split(";");
 		short[] d = new short[60];
@@ -100,7 +102,7 @@ public class Controller {
 	}
 
 	
-	private void updateCurrentPoint(float[] l, short[] diff) {
+	private void updateCurrentPoint(float[] l, final short[] diff) {
 		for (int j = 0; j < l.length; j++) {
 			l[j] = l[j] + ((float)diff[j]) / faktor;
 		}
@@ -113,7 +115,7 @@ public class Controller {
 	 * der gefundenen Patterns enthaelt
 	 * @param data2 
 	 */
-	private void convertForViewer(HashMap<Integer, Integer> indices, ArrayList<short[]> data) 
+	private void convertForViewer(final ImmutableMap<Integer,Integer> indices, final ArrayList<short[]> data) 
 	{
 		StringBuffer buff = new StringBuffer();
 		int ms = 0;
