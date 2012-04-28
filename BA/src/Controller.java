@@ -6,6 +6,8 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
@@ -13,6 +15,8 @@ import com.google.common.io.Files;
 
 
 public class Controller {
+	
+	private static Logger logger = Logger.getLogger("someLoggerName");
 	
 	final File outFile = new File("patterns.csv");
 	final File inputDir = new File("D:/Studium/Semester06_So12/Bachelorarbeit/KinectData");
@@ -27,6 +31,9 @@ public class Controller {
 	final ArrayList<short[]> data = new ArrayList<short[]>();
 
 	public Controller() {
+	
+		logger.setLevel(Level.INFO);
+//		logger.setLevel(Level.ALL); // to turn on all messages
 		
 		//init Data: read from files, parse, store in data
 		final long start = System.currentTimeMillis();
@@ -36,7 +43,7 @@ public class Controller {
 		int count = 0;
 		for (File f : fileList) { 
 			count++;
-			System.out.println(f.getName() + " - reading " + count + "/" + 
+			logger.info(f.getName() + " - reading " + count + "/" + 
 					fileList.length + "...");
 			
 			try {
@@ -50,16 +57,16 @@ public class Controller {
 					data.add(d);
 					prev = d;
 				}
+				logger.info("...reading complete");
 			} catch (Exception e1) {
+				logger.warning("error while parsing " + f.getName());
 				e1.printStackTrace();
-			} finally {
-				System.out.println("...reading complete");
-			}
+			} 
 		}
-		
+				
 		final long ende = System.currentTimeMillis();
-		System.out.println("Dauer Einlesen: " + (ende - start));
-		System.out.println("Größe von data: " + data.size());
+		logger.info("Dauer Einlesen: " + (ende - start));
+		logger.info("Größe von data: " + data.size());
 
 		// HashMap mit Startindex und Anzahl Frames
 		final ImmutableMap<Integer,Integer> indices = 
@@ -86,14 +93,19 @@ public class Controller {
 			if (prev == null) {
 				firstLine[di] = Math.round(decf.parse(s[i]).floatValue() * faktor) / faktor;
 				d[di] = newValue;
+				logger.finer(Float.toString(firstLine[di]));
+				logger.finer("help " + di + ": " + s[i] + " => " + d[di]);
+				logger.fine("help initialized");
 			} else {
 				
 				if (Math.abs(newValue - prev[di]) > Short.MAX_VALUE) {
-					System.err.println("unsafe short casting");
+					logger.severe("unsafe short casting");
+					// or use logger.log(Level.SEVERE, "unsafe short casting");
 					System.exit(1);
 				}
 				
-				d[di] = (short) (newValue - prev[di]);				
+				d[di] = (short) (newValue - prev[di]);
+				logger.finer(newValue + " - " + prev[di] + " = " + d[di]);
 			}
 			
 			di++;
