@@ -142,11 +142,11 @@ public class Controller {
 		StringBuffer buff = new StringBuffer();
 		int ms = 0;
 		short[] dataset;
-		float[] pointDataset = firstLine.clone();  // beginnend vom ersten Datensatz Punkte... 
+		float[] pointDataset = firstLine.clone();
 		
 		for (int i = 0; i < data.size(); i++) {
 			dataset = data.get(i);
-			pointDataset = calculateNewPoints(pointDataset, dataset);
+			pointDataset = calculateNewPoints(pointDataset, dataset); 
 			
 			if(patternIndices.containsKey(i)){
 				float[] patternPoints = pointDataset.clone();
@@ -163,7 +163,6 @@ public class Controller {
 					buff.append("\n");
 					
 					//i++;  // i nicht weiter hochzählen - patterns muessen sich ueberschneiden koennen!
-					//dataset = data.get(i);
 					dataset = data.get(i+j+1);
 					patternPoints = calculateNewPoints(patternPoints, dataset);
 				}
