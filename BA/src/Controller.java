@@ -15,15 +15,15 @@ public class Controller {
 	final float[] firstLine = new float[60];
 	
 	final String outFile = "patterns.csv";
-	final String inputDir = "D:/Studium/Semester06_So12/Bachelorarbeit/KinectData";
-	//final String inputDir = "KinectData";
+	//final String inputDir = "D:/Studium/Semester06_So12/Bachelorarbeit/KinectData";
+	final String inputDir = "KinectData";
 	
 	// Genauigkeit der Daten
 	final float faktor = 100f;
 	final String format = "0,00";
 	DecimalFormat dcf = new DecimalFormat(format);
 	
-	//TODO remove soon
+	//TODO to be removed soon
 	int max;
 	
 	
@@ -142,16 +142,16 @@ public class Controller {
 		StringBuffer buff = new StringBuffer();
 		int ms = 0;
 		short[] dataset;
-		float[] pointDataset = firstLine;  // beginnend vom ersten Datensatz Punkte... 
+		float[] pointDataset = firstLine.clone();  // beginnend vom ersten Datensatz Punkte... 
 		
 		for (int i = 0; i < data.size(); i++) {
 			dataset = data.get(i);
 			pointDataset = calculateNewPoints(pointDataset, dataset);
 			
 			if(patternIndices.containsKey(i)){
-				float[] patternPoints = pointDataset;
-				int end = patternIndices.get(i);
-				for (int j = 0; j < end; j++) {
+				float[] patternPoints = pointDataset.clone();
+				int patternEnd = patternIndices.get(i);
+				for (int j = 0; j < patternEnd; j++) {
 					buff.append(ms+";");
 					for (int k = 0; k < patternPoints.length; k++) {
 						buff.append(patternPoints[k] + ";");
@@ -163,7 +163,8 @@ public class Controller {
 					buff.append("\n");
 					
 					//i++;  // i nicht weiter hochzählen - patterns muessen sich ueberschneiden koennen!
-					dataset = data.get(i+j);
+					//dataset = data.get(i);
+					dataset = data.get(i+j+1);
 					patternPoints = calculateNewPoints(patternPoints, dataset);
 				}
 				for (int k = 0; k < 30; k++) { // am Ende der Sequenz eine Sekunde lang Nuller
