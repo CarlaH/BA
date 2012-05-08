@@ -31,8 +31,7 @@ public class Controller {
 	 *  each int[] contains: first index of first appearance of the "pattern",
 	 *  length of it in number of frames, counter how often it has appeared
 	 */
-	//private List<int[]> storedMoves;
-	private HashMap<Integer, ArrayList<int[]>> storedMoves;
+	private List<int[]> storedMoves;
 
 	// TODO to be removed soon
 	int foundCounter = 0;
@@ -145,11 +144,7 @@ public class Controller {
 	 * searches in data for patterns of lengths between minFrames and maxFrames
 	 */
 	private HashMap<Integer, Integer> searchPatterns() {
-		//storedMoves = new ArrayList<int[]>();
-		storedMoves = new HashMap<Integer, ArrayList<int[]>>();
-		for (int i = minFrames; i <= maxFrames; i++) {
-			storedMoves.put(i, new ArrayList<int[]>());
-		}
+		storedMoves = new ArrayList<int[]>();
 		
 		List<short[]> suggestedPattern;
 		
@@ -181,10 +176,8 @@ public class Controller {
 	private boolean addPattern(List<short[]> suggestedPattern, int startI, int len) {
 		int i;
 		
-		ArrayList<int[]> storedMovesLen = storedMoves.get(len);
-		
-		for (i = 0; i < storedMovesLen.size(); i++) {
-			int[] patInfo = storedMovesLen.get(i);
+		for (i = 0; i < storedMoves.size(); i++) {
+			int[] patInfo = storedMoves.get(i);
 			List<short[]> move = data.subList(patInfo[0], patInfo[0]+patInfo[1]);
 //			if(move.equals(suggestedPattern)){  //TODO mehr toleranz
 //				found = true; break;
@@ -197,7 +190,7 @@ public class Controller {
 		}
 
 		int[] newMove = {startI, len, 1};
-		storedMovesLen.add(newMove);
+		storedMoves.add(newMove);
 		return false;
 		
 	}
@@ -219,7 +212,7 @@ public class Controller {
 			}
 			if (matches < minMatches) { minMatches = matches; }
 		}
-		if(minMatches >= 13*3){  // seven means i.e.: both arms or both legs
+		if (minMatches >= 13*3) {  // seven means i.e.: both arms or both legs
 			return true;
 		} else {
 			return false;
@@ -229,13 +222,11 @@ public class Controller {
 	private HashMap<Integer,Integer> buildPatternHashMap() {
 		HashMap<Integer, Integer> indices = new HashMap<Integer, Integer>();
 	
-		for (int i = minFrames; i <= maxFrames; i++) {
-			for (int[] moveInfos : storedMoves.get(i)) {
-				if(moveInfos[2]>1){
-					indices.put(moveInfos[0], moveInfos[1]);
-				}
-			}			
-		}
+		for (int[] moveInfos : storedMoves) {
+			if(moveInfos[2]>1){
+				indices.put(moveInfos[0], moveInfos[1]);
+			}
+		}			
 		
 //		// Fake-Patterns: HashMap mit Startindex und Anzahl Frames
 //		HashMap<Integer, Integer> indices = new HashMap<Integer, Integer>();
