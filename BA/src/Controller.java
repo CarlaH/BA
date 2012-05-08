@@ -6,13 +6,11 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import com.google.common.io.Files;
 
 public class Controller {
-
-	final ArrayList<short[]> data = new ArrayList<short[]>();;
-	final float[] firstLine = new float[60];
 
 	final String outFile = "patterns.csv";
 	//final String inputDir = "D:/Studium/Semester06_So12/Bachelorarbeit/KinectData";
@@ -22,19 +20,30 @@ public class Controller {
 	final float faktor = 100f;
 	final String format = "0,00";
 	final DecimalFormat dcf = new DecimalFormat(format);
+	
+	final int minFrames = 15;
+	final int maxFrames = 16;
+
+	final ArrayList<short[]> data = new ArrayList<short[]>();;
+	final float[] firstLine = new float[60];
+	
+	/**
+	 *  each int[] contains: first index of first appearance of the "pattern",
+	 *  length of it in number of frames, counter how often it has appeared
+	 */
+	private ArrayList<int[]> storedMoves;
 
 	// TODO to be removed soon
 	int max;
+	int foundCounter = 0;
 
 	public Controller() {
 
 		initializeData();
 
-		// Fake-Patterns: HashMap mit Startindex und Anzahl Frames
-		HashMap<Integer, Integer> indices = new HashMap<Integer, Integer>();
-		indices.put(3100, 120);
-		indices.put(6000, 500);
-
+		HashMap<Integer, Integer> indices = searchPatterns();
+		System.out.println("Moves " + foundCounter + " mal wieder erkannt");
+		
 		printForViewer(indices);
 	}
 
@@ -132,6 +141,108 @@ public class Controller {
 
 		short[][] result = { dataset, helpNew };
 		return result;
+	}
+	
+	
+	
+	/**
+	 * searches in data for patterns of lengths between minFrames and maxFrames
+	 */
+	private HashMap<Integer, Integer> searchPatterns() {
+		storedMoves = new ArrayList<int[]>();  
+		List<short[]> suggestedPattern;
+		
+		int size = data.size();
+		
+		for (int startI = 0; startI < size-maxFrames; startI++) {	
+			System.out.println(startI+"/"+size);
+			
+			for(int len=maxFrames; len>=minFrames; len--){  // for each Framelength differen storedMoves?
+				suggestedPattern = data.subList(startI, startI+len);
+				boolean isOldPattern = addPattern(suggestedPattern, startI, len);
+				// break inner loop if pattern was found?
+			}
+			
+		}
+		
+		return buildPatternHashMap();
+		
+	}
+	
+	/**
+	 * checks whether the suggested Pattern already exists in the storedMoves
+	 * and adds it either by heightening the counter at the fitting position or
+	 * by adding a new entry
+	 * @param suggestedPattern new Move that could be a pattern
+	 * @param storedMoves already found moves
+	 * @return true if move was found, false if a new entry was created
+	 */
+	private boolean addPattern(List<short[]> suggestedPattern, int startI, int len) {
+		boolean found = false;
+		int i;
+		
+		for (i = 0; i < storedMoves.size(); i++) {
+			int[] patInfo = storedMoves.get(i);
+			List<short[]> move = data.subList(patInfo[0], patInfo[0]+patInfo[1]);
+//			if(move.equals(suggestedPattern)){  //TODO mehr toleranz
+//				found = true; break;
+//			}
+			if(movesAreAlike(move, suggestedPattern)){
+				found = true; break;
+			}
+		}
+
+		if(found){
+			storedMoves.get(i)[2] += 1;  // raise counter
+			foundCounter++;
+			return true;
+		} else {
+			int[] newMove = {startI, len, 1};
+			storedMoves.add(newMove);
+			return false;
+		}
+		
+	}
+	
+	private boolean movesAreAlike(List<short[]> moveOne, List<short[]> moveTwo) {
+		if (moveOne.size() != moveTwo.size()){
+			return false;
+		}
+		
+		int minMatches = 20*3;
+		short[] arrayOne; short[] arrayTwo; int matches;
+		
+		for (int i = 0; i < moveOne.size(); i++) {
+			arrayOne = moveOne.get(i);
+			arrayTwo = moveTwo.get(i);
+			matches = 0;
+			for (int j = 0; j < arrayOne.length; j++) {
+				if (arrayOne[j]==arrayTwo[j]) { matches++; }
+			}
+			if (matches < minMatches) { minMatches = matches; }
+		}
+		if(minMatches >= 13*3){  // seven means i.e.: both arms or both legs
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	private HashMap<Integer,Integer> buildPatternHashMap() {
+		HashMap<Integer, Integer> indices = new HashMap<Integer, Integer>();
+	
+		for (int[] moveInfos : storedMoves) {
+			if(moveInfos[2]>1){
+				indices.put(moveInfos[0], moveInfos[1]);
+			}
+		}
+		
+//		// Fake-Patterns: HashMap mit Startindex und Anzahl Frames
+//		HashMap<Integer, Integer> indices = new HashMap<Integer, Integer>();
+//		indices.put(3100, 120);
+//		indices.put(6000, 500);
+		
+		return indices;
 	}
 
 	
