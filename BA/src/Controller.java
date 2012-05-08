@@ -31,10 +31,10 @@ public class Controller {
 	 *  each int[] contains: first index of first appearance of the "pattern",
 	 *  length of it in number of frames, counter how often it has appeared
 	 */
-	private ArrayList<int[]> storedMoves;
+	//private List<int[]> storedMoves;
+	private HashMap<Integer, ArrayList<int[]>> storedMoves;
 
 	// TODO to be removed soon
-	int max;
 	int foundCounter = 0;
 
 	public Controller() {
@@ -88,8 +88,7 @@ public class Controller {
 
 		final long end = System.currentTimeMillis();
 		System.out.println("Dauer Einlesen: " + (end - start));
-		System.out.println("Größe von data: " + data.size()
-				+ ", Maximaler Wert: " + max);
+		System.out.println("Größe von data: " + data.size());
 	}
 
 	/**
@@ -130,9 +129,6 @@ public class Controller {
 					System.out.println(">>> value too big: " + (newValue - help[di]));
 				}
 				dataset[di] = (short) (newValue - help[di]);
-				if (dataset[di] > max) {
-					max = dataset[di];
-				}
 				helpNew[di] = newValue;
 			}
 
@@ -149,7 +145,12 @@ public class Controller {
 	 * searches in data for patterns of lengths between minFrames and maxFrames
 	 */
 	private HashMap<Integer, Integer> searchPatterns() {
-		storedMoves = new ArrayList<int[]>();  
+		//storedMoves = new ArrayList<int[]>();
+		storedMoves = new HashMap<Integer, ArrayList<int[]>>();
+		for (int i = minFrames; i <= maxFrames; i++) {
+			storedMoves.put(i, new ArrayList<int[]>());
+		}
+		
 		List<short[]> suggestedPattern;
 		
 		int size = data.size();
@@ -178,34 +179,31 @@ public class Controller {
 	 * @return true if move was found, false if a new entry was created
 	 */
 	private boolean addPattern(List<short[]> suggestedPattern, int startI, int len) {
-		boolean found = false;
 		int i;
 		
-		for (i = 0; i < storedMoves.size(); i++) {
-			int[] patInfo = storedMoves.get(i);
+		ArrayList<int[]> storedMovesLen = storedMoves.get(len);
+		
+		for (i = 0; i < storedMovesLen.size(); i++) {
+			int[] patInfo = storedMovesLen.get(i);
 			List<short[]> move = data.subList(patInfo[0], patInfo[0]+patInfo[1]);
 //			if(move.equals(suggestedPattern)){  //TODO mehr toleranz
 //				found = true; break;
 //			}
 			if(movesAreAlike(move, suggestedPattern)){
-				found = true; break;
+				patInfo[2] += 1;  // raise counter
+				foundCounter++;
+				return true;
 			}
 		}
 
-		if(found){
-			storedMoves.get(i)[2] += 1;  // raise counter
-			foundCounter++;
-			return true;
-		} else {
-			int[] newMove = {startI, len, 1};
-			storedMoves.add(newMove);
-			return false;
-		}
+		int[] newMove = {startI, len, 1};
+		storedMovesLen.add(newMove);
+		return false;
 		
 	}
 	
 	private boolean movesAreAlike(List<short[]> moveOne, List<short[]> moveTwo) {
-		if (moveOne.size() != moveTwo.size()){
+		if (moveOne.size() != moveTwo.size()){  // shouldn't occur anymore
 			return false;
 		}
 		
@@ -231,10 +229,12 @@ public class Controller {
 	private HashMap<Integer,Integer> buildPatternHashMap() {
 		HashMap<Integer, Integer> indices = new HashMap<Integer, Integer>();
 	
-		for (int[] moveInfos : storedMoves) {
-			if(moveInfos[2]>1){
-				indices.put(moveInfos[0], moveInfos[1]);
-			}
+		for (int i = minFrames; i <= maxFrames; i++) {
+			for (int[] moveInfos : storedMoves.get(i)) {
+				if(moveInfos[2]>1){
+					indices.put(moveInfos[0], moveInfos[1]);
+				}
+			}			
 		}
 		
 //		// Fake-Patterns: HashMap mit Startindex und Anzahl Frames
