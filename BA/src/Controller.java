@@ -24,7 +24,7 @@ public class Controller {
 	final int minFrames = 15;
 	final int maxFrames = 16;
 
-	final ArrayList<short[]> data = new ArrayList<short[]>();;
+	final ArrayList<short[]> data = new ArrayList<short[]>();
 	final float[] firstLine = new float[60];
 	
 	/**
@@ -36,6 +36,8 @@ public class Controller {
 	// TODO to be removed soon
 	int foundCounter = 0;
 
+	
+	
 	public Controller() {
 
 		initializeData();
@@ -46,6 +48,7 @@ public class Controller {
 		printForViewer(indices);
 	}
 
+	
 	
 	/**
 	 * goes through all files in the directory and store the values in data
@@ -102,7 +105,7 @@ public class Controller {
 	 * @return short[] containing the values
 	 * @throws ParseException
 	 */
-	private short[][] processLine(String strLine, short[] help,	boolean initFirst) throws ParseException {
+	private short[][] processLine(String strLine, short[] help, boolean initFirst) throws ParseException {
 		String[] strValues = strLine.split(";");
 		int di = 0;
 		short newValue = 0;
@@ -174,11 +177,12 @@ public class Controller {
 	 * @return true if move was found, false if a new entry was created
 	 */
 	private boolean addPattern(List<short[]> suggestedPattern, int startI, int len) {
-		int i;
-		
-		for (i = 0; i < storedMoves.size(); i++) {
+		for (int i = 0; i < storedMoves.size(); i++) {
+			
 			int[] patInfo = storedMoves.get(i);
-			List<short[]> move = data.subList(patInfo[0], patInfo[0]+patInfo[1]);
+			if (patInfo[1]!=len) { continue; }  // check size
+			List<short[]> move = data.subList(patInfo[0], patInfo[0] + patInfo[1]);
+			
 //			if(move.equals(suggestedPattern)){  //TODO mehr toleranz
 //				found = true; break;
 //			}
@@ -187,6 +191,7 @@ public class Controller {
 				foundCounter++;
 				return true;
 			}
+			
 		}
 
 		int[] newMove = {startI, len, 1};
@@ -219,7 +224,7 @@ public class Controller {
 		}
 	}
 	
-	private HashMap<Integer,Integer> buildPatternHashMap() {
+	private HashMap<Integer, Integer> buildPatternHashMap() {
 		HashMap<Integer, Integer> indices = new HashMap<Integer, Integer>();
 	
 		for (int[] moveInfos : storedMoves) {
