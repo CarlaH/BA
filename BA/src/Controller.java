@@ -17,11 +17,13 @@ public class Controller {
 	//final String inputDir = "D:/Studium/Semester06_So12/Bachelorarbeit/KinectData";
 	final String inputDir = "KinectData";
 
-	// Genauigkeit der Daten
+	// Vergroeberung
 	final float faktor = 100f;
 	final String format = "0,00";
 	final DecimalFormat dcf = new DecimalFormat(format);
+	final short framerate = 6;
 	
+	// Laenge Patterns
 	final short minFrames = 15;
 	final short maxFrames = 16;
 
@@ -29,6 +31,7 @@ public class Controller {
 	final float[] firstLine = new float[60];
 	private List<PatternInfo> storedMoves;
 
+	
 	// TODO to be removed soon
 	int foundCounter = 0;
 
@@ -41,7 +44,12 @@ public class Controller {
 		//HashMap<Integer, Short> indices = searchPatterns();
 		//System.out.println("Moves " + foundCounter + " mal wieder erkannt");
 		
-		//printForViewer(indices);
+		// Fake-Patterns: HashMap mit Startindex und Anzahl Frames
+		HashMap<Integer, Short> indices = new HashMap<Integer, Short>();
+		indices.put(0, (short)1000);
+		indices.put(6000, (short)500);
+		
+		printForViewer(indices);
 	}
 
 	
@@ -58,6 +66,8 @@ public class Controller {
 		int amountOfFiles = fileList.length;
 		int fileCounter = 0;
 		short[] help = null;
+		short takeEachNth = (short) Math.round(30/framerate);
+		System.out.println("take each nth: " + takeEachNth);
 
 		for (File file : fileList) {
 			fileCounter++;
@@ -67,8 +77,11 @@ public class Controller {
 				BufferedReader br = new BufferedReader(new FileReader(file));
 				String strLine;
 				boolean initFirst;
+				int i = -1;
 
 				while ((strLine = br.readLine()) != null) {
+					i++;
+					if(i%takeEachNth != 0) { continue; }
 					initFirst = (help == null) ? true : false;
 					short[][] result = processLine(strLine, help, initFirst);
 					short[] dataset = result[0];
@@ -224,11 +237,6 @@ public class Controller {
 			}
 		}			
 		
-//		// Fake-Patterns: HashMap mit Startindex und Anzahl Frames
-//		HashMap<Integer, Integer> indices = new HashMap<Integer, Integer>();
-//		indices.put(3100, 120);
-//		indices.put(6000, 500);
-		
 		return indices;
 	}
 
@@ -248,6 +256,7 @@ public class Controller {
 		int ms = 0;
 		short[] dataset;
 		float[] pointDataset = firstLine.clone();
+//		short repeatLine = 30/framerate;
 
 		for (int i = 0; i < data.size(); i++) {
 			dataset = data.get(i);
@@ -257,15 +266,18 @@ public class Controller {
 				float[] patternPoints = pointDataset.clone();
 				int patternEnd = patternIndices.get(i);
 				for (int j = 0; j < patternEnd; j++) {
-					buff.append(ms + ";");
-					for (int k = 0; k < patternPoints.length; k++) {
-						buff.append(patternPoints[k] + ";");
-						if ((k + 1) % 3 == 0) {
-							buff.append("1;");
+					
+//					for (int h = 0; h < repeatLine; h++) {  // um auf framerate 30 zu kommen
+						buff.append(ms + ";");
+						for (int k = 0; k < patternPoints.length; k++) {
+							buff.append(patternPoints[k] + ";");
+							if ((k + 1) % 3 == 0) {
+								buff.append("1;");
+							}
 						}
-					}
-					ms += 33;
-					buff.append("\n");
+						ms += Math.round(1000/framerate);
+						buff.append("\n");	
+//					}
 
 					dataset = data.get(i + j + 1);
 					patternPoints = calculateNewPoints(patternPoints, dataset);
