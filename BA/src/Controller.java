@@ -6,6 +6,7 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 
 import com.google.common.io.Files;
@@ -21,17 +22,12 @@ public class Controller {
 	final String format = "0,00";
 	final DecimalFormat dcf = new DecimalFormat(format);
 	
-	final int minFrames = 15;
-	final int maxFrames = 16;
+	final short minFrames = 15;
+	final short maxFrames = 16;
 
 	final ArrayList<short[]> data = new ArrayList<short[]>();
 	final float[] firstLine = new float[60];
-	
-	/**
-	 *  each int[] contains: first index of first appearance of the "pattern",
-	 *  length of it in number of frames, counter how often it has appeared
-	 */
-	private List<int[]> storedMoves;
+	private List<PatternInfo> storedMoves;
 
 	// TODO to be removed soon
 	int foundCounter = 0;
@@ -42,7 +38,7 @@ public class Controller {
 
 		initializeData();
 
-		HashMap<Integer, Integer> indices = searchPatterns();
+		HashMap<Integer, Short> indices = searchPatterns();
 		System.out.println("Moves " + foundCounter + " mal wieder erkannt");
 		
 		printForViewer(indices);
@@ -146,8 +142,8 @@ public class Controller {
 	/**
 	 * searches in data for patterns of lengths between minFrames and maxFrames
 	 */
-	private HashMap<Integer, Integer> searchPatterns() {
-		storedMoves = new ArrayList<int[]>();
+	private HashMap<Integer, Short> searchPatterns() {
+		storedMoves = new LinkedList<PatternInfo>();
 		
 		List<short[]> suggestedPattern;
 		
@@ -156,7 +152,7 @@ public class Controller {
 		for (int startI = 0; startI < size-maxFrames; startI++) {	
 			System.out.println(startI+"/"+size);
 			
-			for(int len=maxFrames; len>=minFrames; len--){  // for each Framelength differen storedMoves?
+			for(short len=maxFrames; len>=minFrames; len--){  // for each Framelength differen storedMoves?
 				suggestedPattern = data.subList(startI, startI+len);
 				boolean isOldPattern = addPattern(suggestedPattern, startI, len);
 				// break inner loop if pattern was found?
@@ -176,18 +172,17 @@ public class Controller {
 	 * @param storedMoves already found moves
 	 * @return true if move was found, false if a new entry was created
 	 */
-	private boolean addPattern(List<short[]> suggestedPattern, int startI, int len) {
-		for (int i = 0; i < storedMoves.size(); i++) {
+	private boolean addPattern(List<short[]> suggestedPattern, int startI, short len) {
+		for (PatternInfo patInfo : storedMoves){
 			
-			int[] patInfo = storedMoves.get(i);
-			if (patInfo[1]!=len) { continue; }  // check size
-			List<short[]> move = data.subList(patInfo[0], patInfo[0] + patInfo[1]);
+			if (patInfo.getLength()!=len) { continue; }  // check size
+			List<short[]> move = data.subList(patInfo.getStartIndex(), patInfo.getStartIndex()+ patInfo.getLength());
 			
 //			if(move.equals(suggestedPattern)){  //TODO mehr toleranz
 //				found = true; break;
 //			}
 			if(movesAreAlike(move, suggestedPattern)){
-				patInfo[2] += 1;  // raise counter
+				patInfo.augmentCounter();
 				foundCounter++;
 				return true;
 			}
@@ -195,7 +190,7 @@ public class Controller {
 		}
 
 		int[] newMove = {startI, len, 1};
-		storedMoves.add(newMove);
+		storedMoves.add(new PatternInfo(startI, len, 1));
 		return false;
 		
 	}
@@ -224,12 +219,12 @@ public class Controller {
 		}
 	}
 	
-	private HashMap<Integer, Integer> buildPatternHashMap() {
-		HashMap<Integer, Integer> indices = new HashMap<Integer, Integer>();
+	private HashMap<Integer, Short> buildPatternHashMap() {
+		HashMap<Integer, Short> indices = new HashMap<Integer, Short>();
 	
-		for (int[] moveInfos : storedMoves) {
-			if(moveInfos[2]>1){
-				indices.put(moveInfos[0], moveInfos[1]);
+		for (PatternInfo moveInfos : storedMoves) {
+			if(moveInfos.getCounter()>1){
+				indices.put(moveInfos.getStartIndex(), moveInfos.getLength());
 			}
 		}			
 		
@@ -252,7 +247,7 @@ public class Controller {
 	 *            HashMap die die Position als key und Laenge als value der
 	 *            gefundenen Patterns enthaelt
 	 */
-	private void printForViewer(HashMap<Integer, Integer> patternIndices) {
+	private void printForViewer(HashMap<Integer, Short> patternIndices) {
 		StringBuffer buff = new StringBuffer();
 		int ms = 0;
 		short[] dataset;
