@@ -25,7 +25,7 @@ public class Controller {
 	final short minFrames = 15;
 	final short maxFrames = 16;
 
-	final ArrayList<short[]> data = new ArrayList<short[]>();
+	final LinkedList<short[]> data = new LinkedList<short[]>();
 	final float[] firstLine = new float[60];
 	private List<PatternInfo> storedMoves;
 
@@ -178,9 +178,6 @@ public class Controller {
 			if (patInfo.getLength()!=len) { continue; }  // check size
 			List<short[]> move = data.subList(patInfo.getStartIndex(), patInfo.getStartIndex()+ patInfo.getLength());
 			
-//			if(move.equals(suggestedPattern)){  //TODO mehr toleranz
-//				found = true; break;
-//			}
 			if(movesAreAlike(move, suggestedPattern)){
 				patInfo.augmentCounter();
 				foundCounter++;
@@ -189,7 +186,6 @@ public class Controller {
 			
 		}
 
-		int[] newMove = {startI, len, 1};
 		storedMoves.add(new PatternInfo(startI, len, 1));
 		return false;
 		
