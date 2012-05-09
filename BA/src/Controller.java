@@ -25,7 +25,7 @@ public class Controller {
 	final short minFrames = 15;
 	final short maxFrames = 16;
 
-	final LinkedList<short[]> data = new LinkedList<short[]>();
+	final List<short[]> data = new ArrayList<short[]>();
 	final float[] firstLine = new float[60];
 	private List<PatternInfo> storedMoves;
 
@@ -38,10 +38,10 @@ public class Controller {
 
 		initializeData();
 
-		HashMap<Integer, Short> indices = searchPatterns();
-		System.out.println("Moves " + foundCounter + " mal wieder erkannt");
+		//HashMap<Integer, Short> indices = searchPatterns();
+		//System.out.println("Moves " + foundCounter + " mal wieder erkannt");
 		
-		printForViewer(indices);
+		//printForViewer(indices);
 	}
 
 	
