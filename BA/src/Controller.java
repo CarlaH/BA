@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.PriorityQueue;
 
 import com.google.common.io.Files;
 
@@ -26,12 +27,10 @@ public class Controller {
 	// Laenge Patterns
 	final short minFrames = 15;
 	final short maxFrames = 16;
-
-	final List<short[]> data = new ArrayList<short[]>();
-	final float[] firstLine = new float[60];
-	private List<PatternInfo> storedMoves;
-
 	
+	final float[] firstLine = new float[60];
+	PriorityQueue<PatternInfo> storedMoves = new PriorityQueue<PatternInfo>();
+
 	// TODO to be removed soon
 	int foundCounter = 0;
 
@@ -39,67 +38,97 @@ public class Controller {
 	
 	public Controller() {
 
-		initializeData();
-
-		//HashMap<Integer, Short> indices = searchPatterns();
-		//System.out.println("Moves " + foundCounter + " mal wieder erkannt");
+		File[] fileList = initializeFiles();
+		
+		short[] help = null;
+		
+		for (int i = 0; i < fileList.length; i++) {
+			File file = fileList[i];
+			System.out.println(file.getName() + " - reading " + (i+1)+ "/" + fileList.length + "...");
+			long start = System.currentTimeMillis();
+			searchPatterns(file, help);		
+			long end = System.currentTimeMillis();
+			System.out.println("Dauer searchPatterns: " + (end-start));
+			validatePatterns(i+1);
+			System.out.println("...reading complete");
+		}
+		
+		HashMap<Integer, Short> indices = buildPatternHashMap();
 		
 		// Fake-Patterns: HashMap mit Startindex und Anzahl Frames
-		HashMap<Integer, Short> indices = new HashMap<Integer, Short>();
-		indices.put(0, (short)1000);
-		indices.put(6000, (short)500);
+//		HashMap<Integer, Short> indices = new HashMap<Integer, Short>();
+//		indices.put(0, (short)1000);
+//		indices.put(6000, (short)500);
 		
-		printForViewer(indices);
+		//printForViewer(indices);
 	}
 
 	
 	
-	/**
-	 * goes through all files in the directory and store the values in data
-	 */
-	private void initializeData() {
-		final long start = System.currentTimeMillis();
-
+	private File[] initializeFiles() {
 		File dir = new File(inputDir);
 		File[] fileList = dir.listFiles();
+		
+		return fileList;
 
-		int amountOfFiles = fileList.length;
-		int fileCounter = 0;
-		short[] help = null;
-		short takeEachNth = (short) Math.round(30/framerate);
-		System.out.println("take each nth: " + takeEachNth);
+	}	
 
-		for (File file : fileList) {
-			fileCounter++;
-			System.out.println(file.getName() + " - reading " + fileCounter	+ "/" + amountOfFiles + "...");
-			try {
-				// read file content
-				BufferedReader br = new BufferedReader(new FileReader(file));
-				String strLine;
-				boolean initFirst;
-				int i = -1;
+	
+	/**
+	 * searches in data for patterns of lengths between minFrames and maxFrames
+	 */
+	private void searchPatterns(File file, short[] help) {
+		
+		ArrayList<short[]> data = initializeFileData(file, help);
+		List<short[]> suggestedPattern;
+		int size = data.size();
 
-				while ((strLine = br.readLine()) != null) {
-					i++;
-					if(i%takeEachNth != 0) { continue; }
-					initFirst = (help == null) ? true : false;
-					short[][] result = processLine(strLine, help, initFirst);
-					short[] dataset = result[0];
-					if (!initFirst) {
-						data.add(dataset); // add new Array to data
-					}
-					help = result[1];
-				}
-
-				System.out.println("...reading complete");
-			} catch (Exception e) {
-				e.printStackTrace();
+		System.out.println("search patterns...");
+		
+		for (int startI = 0; startI < size-maxFrames; startI++) {	
+			//System.out.println(startI+"/"+size);
+			
+			for(short len=maxFrames; len>=minFrames; len--){  // for each Framelength differen storedMoves?
+				suggestedPattern = data.subList(startI, startI+len);
+				boolean isOldPattern = addPattern(suggestedPattern, startI, len);
+				// break inner loop if pattern was found?
 			}
+			
 		}
+		
+	}
+	
+	private ArrayList<short[]> initializeFileData(File file, short[] help) {
+		System.out.println("initialize File Data...");
+		ArrayList<short[]> data = new ArrayList<short[]>();
+		
+		short takeEachNth = (short) Math.round(30/framerate);
 
-		final long end = System.currentTimeMillis();
-		System.out.println("Dauer Einlesen: " + (end - start));
-		System.out.println("Größe von data: " + data.size());
+		try {
+			// read file content
+			BufferedReader br = new BufferedReader(new FileReader(file));
+			String strLine;
+			boolean initFirst;
+			int i = -1;
+
+			while ((strLine = br.readLine()) != null) {
+				i++;
+				if(i%takeEachNth != 0) { continue; }
+				initFirst = (help == null) ? true : false;
+				short[][] result = processLine(strLine, help, initFirst);
+				short[] dataset = result[0];
+				if (!initFirst) {
+					data.add(dataset); // add new Array to data
+				}
+				help = result[1];
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+	return data;
+		
 	}
 
 	/**
@@ -150,33 +179,6 @@ public class Controller {
 		return result;
 	}
 	
-	
-	
-	/**
-	 * searches in data for patterns of lengths between minFrames and maxFrames
-	 */
-	private HashMap<Integer, Short> searchPatterns() {
-		storedMoves = new LinkedList<PatternInfo>();
-		
-		List<short[]> suggestedPattern;
-		
-		int size = data.size();
-		
-		for (int startI = 0; startI < size-maxFrames; startI++) {	
-			System.out.println(startI+"/"+size);
-			
-			for(short len=maxFrames; len>=minFrames; len--){  // for each Framelength differen storedMoves?
-				suggestedPattern = data.subList(startI, startI+len);
-				boolean isOldPattern = addPattern(suggestedPattern, startI, len);
-				// break inner loop if pattern was found?
-			}
-			
-		}
-		
-		return buildPatternHashMap();
-		
-	}
-	
 	/**
 	 * checks whether the suggested Pattern already exists in the storedMoves
 	 * and adds it either by heightening the counter at the fitting position or
@@ -189,9 +191,9 @@ public class Controller {
 		for (PatternInfo patInfo : storedMoves){
 			
 			if (patInfo.getLength()!=len) { continue; }  // check size
-			List<short[]> move = data.subList(patInfo.getStartIndex(), patInfo.getStartIndex()+ patInfo.getLength());
 			
-			if(movesAreAlike(move, suggestedPattern)){
+			//if( movesAreAlike(patInfo.getMove(), suggestedPattern)){
+			if (patInfo.moveEquals(suggestedPattern)) {
 				patInfo.augmentCounter();
 				foundCounter++;
 				return true;
@@ -199,34 +201,29 @@ public class Controller {
 			
 		}
 
-		storedMoves.add(new PatternInfo(startI, len, 1));
+		storedMoves.add(new PatternInfo(startI, len, 1, suggestedPattern));
 		return false;
 		
 	}
 	
-	private boolean movesAreAlike(List<short[]> moveOne, List<short[]> moveTwo) {
-		if (moveOne.size() != moveTwo.size()){  // shouldn't occur anymore
-			return false;
+	
+	
+	private void validatePatterns(int fileNr) {
+		System.out.println("validate patterns...");
+		
+		while(storedMoves.peek().getCounter()<(fileNr*10)) {
+			storedMoves.remove();
 		}
 		
-		int minMatches = 20*3;
-		short[] arrayOne; short[] arrayTwo; int matches;
-		
-		for (int i = 0; i < moveOne.size(); i++) {
-			arrayOne = moveOne.get(i);
-			arrayTwo = moveTwo.get(i);
-			matches = 0;
-			for (int j = 0; j < arrayOne.length; j++) {
-				if (arrayOne[j]==arrayTwo[j]) { matches++; }
-			}
-			if (matches < minMatches) { minMatches = matches; }
-		}
-		if (minMatches >= 13*3) {  // seven means i.e.: both arms or both legs
-			return true;
-		} else {
-			return false;
-		}
+		System.out.println("Verbleibende Patterns: " + storedMoves.size());
+//		int size = storedMoves.size();
+//		for (int i = 0; i < size; i++) {
+//			System.out.println(storedMoves.poll().getCounter());			
+//		}
 	}
+	
+	
+	
 	
 	private HashMap<Integer, Short> buildPatternHashMap() {
 		HashMap<Integer, Short> indices = new HashMap<Integer, Short>();
@@ -251,63 +248,62 @@ public class Controller {
 	 *            HashMap die die Position als key und Laenge als value der
 	 *            gefundenen Patterns enthaelt
 	 */
-	private void printForViewer(HashMap<Integer, Short> patternIndices) {
-		StringBuffer buff = new StringBuffer();
-		int ms = 0;
-		short[] dataset;
-		float[] pointDataset = firstLine.clone();
-//		short repeatLine = 30/framerate;
-
-		for (int i = 0; i < data.size(); i++) {
-			dataset = data.get(i);
-			pointDataset = calculateNewPoints(pointDataset, dataset);
-
-			if (patternIndices.containsKey(i)) {
-				float[] patternPoints = pointDataset.clone();
-				int patternEnd = patternIndices.get(i);
-				for (int j = 0; j < patternEnd; j++) {
-					
-//					for (int h = 0; h < repeatLine; h++) {  // um auf framerate 30 zu kommen
-						buff.append(ms + ";");
-						for (int k = 0; k < patternPoints.length; k++) {
-							buff.append(patternPoints[k] + ";");
-							if ((k + 1) % 3 == 0) {
-								buff.append("1;");
-							}
-						}
-						ms += Math.round(1000/framerate);
-						buff.append("\n");	
-//					}
-
-					dataset = data.get(i + j + 1);
-					patternPoints = calculateNewPoints(patternPoints, dataset);
-				}
-				
-				// am Ende einer Sequenz eine Sekunde lang Nuller
-				String origin = "0;0;0;1";
-				int numFrames = 30;
-				int numJoints = 20;
-				
-				String originLine = "0;";
-				for (int j = 0; j < numJoints-1; j++) {
-					originLine += origin+";";
-				}
-				originLine += origin+"\n";
-				
-				for (int j = 0; j < numFrames; j++) {
-					buff.append(originLine);
-				}
-				
-			}
-		}
-		
-		try {
-			Files.write(buff.toString().replace(".", ",").getBytes(), new File(outFile));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-	}
+//	private void printForViewer(HashMap<Integer, Short> patternIndices) {
+//		StringBuffer buff = new StringBuffer();
+//		int ms = 0;
+//		short[] dataset;
+//		float[] pointDataset = firstLine.clone();
+////		short repeatLine = 30/framerate;
+//
+//		for (int i = 0; i < data.size(); i++) {
+//			dataset = data.get(i);
+//			pointDataset = calculateNewPoints(pointDataset, dataset);
+//
+//			if (patternIndices.containsKey(i)) {
+//				float[] patternPoints = pointDataset.clone();
+//				int patternEnd = patternIndices.get(i);
+//				for (int j = 0; j < patternEnd; j++) {
+//					
+////					for (int h = 0; h < repeatLine; h++) {  // um auf framerate 30 zu kommen
+//						buff.append(ms + ";");
+//						for (int k = 0; k < patternPoints.length; k++) {
+//							buff.append(patternPoints[k] + ";");
+//							if ((k + 1) % 3 == 0) {
+//								buff.append("1;");
+//							}
+//						}
+//						ms += Math.round(1000/framerate);
+//						buff.append("\n");	
+////					}
+//
+//					dataset = data.get(i + j + 1);
+//					patternPoints = calculateNewPoints(patternPoints, dataset);
+//				}
+//				
+//				// am Ende einer Sequenz eine Sekunde lang Nuller
+//				String origin = "0;0;0;1";
+//				int numJoints = 20;
+//				
+//				String originLine = "0;";
+//				for (int j = 0; j < numJoints-1; j++) {
+//					originLine += origin+";";
+//				}
+//				originLine += origin+"\n";
+//				
+//				for (int j = 0; j < framerate; j++) {
+//					buff.append(originLine);
+//				}
+//				
+//			}
+//		}
+//		
+//		try {
+//			Files.write(buff.toString().replace(".", ",").getBytes(), new File(outFile));
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+//
+//	}
 
 	/**
 	 * Calculates the new Joints
