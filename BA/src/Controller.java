@@ -54,14 +54,16 @@ public class Controller {
 			System.out.println("...reading complete");
 		}
 		
-		HashMap<Integer, Short> indices = buildPatternHashMap();
+		HashMap<Integer, Short> indices = buildPatternHashMap(fileList.length);
 		
 		// Fake-Patterns: HashMap mit Startindex und Anzahl Frames
 //		HashMap<Integer, Short> indices = new HashMap<Integer, Short>();
 //		indices.put(0, (short)1000);
 //		indices.put(6000, (short)500);
 		
-		//printForViewer(indices);
+		printForViewer(indices, fileList);
+		
+		System.out.println("complete!");
 	}
 
 	
@@ -215,7 +217,8 @@ public class Controller {
 	private void validatePatterns(int fileNr) {
 		System.out.println("validate patterns...");
 		
-		while(storedMoves.peek().getCounter()<(fileNr*10)) {
+		System.out.println(storedMoves.size());
+		while(storedMoves.peek().getCounter()<fileNr) {
 			storedMoves.remove();
 		}
 		
@@ -229,11 +232,11 @@ public class Controller {
 	
 	
 	
-	private HashMap<Integer, Short> buildPatternHashMap() {
+	private HashMap<Integer, Short> buildPatternHashMap(int filenr) {
 		HashMap<Integer, Short> indices = new HashMap<Integer, Short>();
 	
 		for (PatternInfo moveInfos : storedMoves) {
-			if(moveInfos.getCounter()>1){
+			if(moveInfos.getCounter()>filenr){
 				indices.put(moveInfos.getStartIndex(), moveInfos.getLength());
 			}
 		}			
@@ -252,62 +255,74 @@ public class Controller {
 	 *            HashMap die die Position als key und Laenge als value der
 	 *            gefundenen Patterns enthaelt
 	 */
-//	private void printForViewer(HashMap<Integer, Short> patternIndices) {
-//		StringBuffer buff = new StringBuffer();
-//		int ms = 0;
-//		short[] dataset;
-//		float[] pointDataset = firstLine.clone();
-////		short repeatLine = 30/framerate;
-//
-//		for (int i = 0; i < data.size(); i++) {
-//			dataset = data.get(i);
-//			pointDataset = calculateNewPoints(pointDataset, dataset);
-//
-//			if (patternIndices.containsKey(i)) {
-//				float[] patternPoints = pointDataset.clone();
-//				int patternEnd = patternIndices.get(i);
-//				for (int j = 0; j < patternEnd; j++) {
-//					
-////					for (int h = 0; h < repeatLine; h++) {  // um auf framerate 30 zu kommen
-//						buff.append(ms + ";");
-//						for (int k = 0; k < patternPoints.length; k++) {
-//							buff.append(patternPoints[k] + ";");
-//							if ((k + 1) % 3 == 0) {
-//								buff.append("1;");
-//							}
-//						}
-//						ms += Math.round(1000/framerate);
-//						buff.append("\n");	
-////					}
-//
-//					dataset = data.get(i + j + 1);
-//					patternPoints = calculateNewPoints(patternPoints, dataset);
-//				}
-//				
-//				// am Ende einer Sequenz eine Sekunde lang Nuller
-//				String origin = "0;0;0;1";
-//				int numJoints = 20;
-//				
-//				String originLine = "0;";
-//				for (int j = 0; j < numJoints-1; j++) {
-//					originLine += origin+";";
-//				}
-//				originLine += origin+"\n";
-//				
-//				for (int j = 0; j < framerate; j++) {
-//					buff.append(originLine);
-//				}
-//				
-//			}
-//		}
-//		
-//		try {
-//			Files.write(buff.toString().replace(".", ",").getBytes(), new File(outFile));
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
-//
-//	}
+	private void printForViewer(HashMap<Integer, Short> patternIndices, File[] fileList) {
+		System.out.println("print patterns for viewer...");
+		
+		StringBuffer buff = new StringBuffer();
+		int ms = 0;
+		short[] dataset;
+		float[] pointDataset = firstLine.clone();
+//		short repeatLine = 30/framerate;
+		short[] help = null;
+		int startI = 0;
+		
+		for (int f = 0; f < fileList.length; f++) {
+
+			ArrayList<short[]> data = initializeFileData(fileList[f], help);
+
+			for (int i = 0; i < data.size(); i++) {
+				dataset = data.get(i);
+				pointDataset = calculateNewPoints(pointDataset, dataset);
+
+				if (patternIndices.containsKey(startI)) {
+					float[] patternPoints = pointDataset.clone();
+					int patternEnd = patternIndices.get(startI);
+					for (int j = 0; j < patternEnd; j++) {
+
+						// for (int h = 0; h < repeatLine; h++) { // um auf
+						// framerate 30 zu kommen
+						buff.append(ms + ";");
+						for (int k = 0; k < patternPoints.length; k++) {
+							buff.append(patternPoints[k] + ";");
+							if ((k + 1) % 3 == 0) {
+								buff.append("1;");
+							}
+						}
+						ms += Math.round(1000 / framerate);
+						buff.append("\n");
+						// }
+
+						dataset = data.get(i + j + 1);
+						patternPoints = calculateNewPoints(patternPoints,
+								dataset);
+					}
+
+					// am Ende einer Sequenz eine Sekunde lang Nuller
+					String origin = "0;0;0;1";
+					int numJoints = 20;
+
+					String originLine = "0;";
+					for (int j = 0; j < numJoints - 1; j++) {
+						originLine += origin + ";";
+					}
+					originLine += origin + "\n";
+
+					for (int j = 0; j < framerate; j++) {
+						buff.append(originLine);
+					}
+
+				}
+				startI++;
+			}
+		}
+		
+		try {
+			Files.write(buff.toString().replace(".", ",").getBytes(), new File(outFile));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
 
 	/**
 	 * Calculates the new Joints
