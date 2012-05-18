@@ -292,6 +292,7 @@ public class Controller {
 						buff.append("\n");
 						// }
 
+						if (i+j+1 == data.size()) { break; }
 						dataset = data.get(i + j + 1);
 						patternPoints = calculateNewPoints(patternPoints,
 								dataset);

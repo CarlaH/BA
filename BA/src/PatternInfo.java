@@ -80,6 +80,25 @@ public class PatternInfo implements Comparable<PatternInfo>{
 			return false;
 		}
 		
+		short[] arrayOne; short[] arrayTwo;
+		
+		for (int i = 0; i < moveOne.size(); i++) {
+			arrayOne = moveOne.get(i);
+			arrayTwo = moveTwo.get(i);
+			for (int j = 0; j < arrayOne.length; j++) {
+				if (Math.abs(arrayOne[j]-arrayTwo[j]) > 50) { return false; }
+			}
+		}
+		
+		return true;
+	}
+	
+	
+	private boolean movesAreAlikeOld(List<short[]> moveOne, List<short[]> moveTwo) {
+		if (moveOne.size() != moveTwo.size()){  // shouldn't occur anymore
+			return false;
+		}
+		
 		int minMatches = 20*3;
 		short[] arrayOne; short[] arrayTwo; int matches;
 		
