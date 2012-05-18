@@ -60,8 +60,9 @@ public class PatternInfo implements Comparable<PatternInfo>{
 		return 0;
 	}
 	
+	
 	/**
-	 * Returns true if the move stored in this Obeject is 
+	 * Returns true if the move stored in this Object is 
 	 * said to be the same as in the List<short[]>.
 	 * Attributes counter, length and startIndex are ignored.
 	 * 
@@ -72,7 +73,6 @@ public class PatternInfo implements Comparable<PatternInfo>{
 		return movesAreAlike(this.move, moveTwo);
 			
 	}
-	
 	
 	
 	private boolean movesAreAlike(List<short[]> moveOne, List<short[]> moveTwo) {

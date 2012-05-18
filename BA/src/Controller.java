@@ -41,15 +41,16 @@ public class Controller {
 		File[] fileList = initializeFiles();
 		
 		short[] help = null;
+		int startI = 0;
 		
 		for (int i = 0; i < fileList.length; i++) {
 			File file = fileList[i];
+			
 			System.out.println(file.getName() + " - reading " + (i+1)+ "/" + fileList.length + "...");
-			long start = System.currentTimeMillis();
-			searchPatterns(file, help);		
-			long end = System.currentTimeMillis();
-			System.out.println("Dauer searchPatterns: " + (end-start));
+			
+			startI = searchPatterns(file, help, startI);	
 			validatePatterns(i+1);
+			
 			System.out.println("...reading complete");
 		}
 		
@@ -76,8 +77,9 @@ public class Controller {
 	
 	/**
 	 * searches in data for patterns of lengths between minFrames and maxFrames
+	 * 
 	 */
-	private void searchPatterns(File file, short[] help) {
+	private int searchPatterns(File file, short[] help, int startI) {
 		
 		ArrayList<short[]> data = initializeFileData(file, help);
 		List<short[]> suggestedPattern;
@@ -85,16 +87,20 @@ public class Controller {
 
 		System.out.println("search patterns...");
 		
-		for (int startI = 0; startI < size-maxFrames; startI++) {	
-			//System.out.println(startI+"/"+size);
+		for (int i = 0; i < size-maxFrames; i++) {	
+			//System.out.println(i+"/"+size);
 			
-			for(short len=maxFrames; len>=minFrames; len--){  // for each Framelength differen storedMoves?
-				suggestedPattern = data.subList(startI, startI+len);
+			for(short len=maxFrames; len>=minFrames; len--){  // for each Framelength different storedMoves?
+				suggestedPattern = data.subList(i, i+len);
 				boolean isOldPattern = addPattern(suggestedPattern, startI, len);
 				// break inner loop if pattern was found?
 			}
 			
+			startI++;
+			
 		}
+		
+		return startI;
 		
 	}
 	
@@ -160,8 +166,7 @@ public class Controller {
 			if (initFirst) {
 				firstLine[di] = Math.round(parsedValue) / faktor;
 				helpNew[di] = (short) (parsedValue);
-				// System.out.println("help " + di + ": " + s[i] + " => " +
-				// d[di]);
+				// System.out.println("help " + di + ": " + s[i] + " => " + d[di]);
 
 			} else {
 				newValue = (short) (parsedValue);
@@ -192,7 +197,6 @@ public class Controller {
 			
 			if (patInfo.getLength()!=len) { continue; }  // check size
 			
-			//if( movesAreAlike(patInfo.getMove(), suggestedPattern)){
 			if (patInfo.moveEquals(suggestedPattern)) {
 				patInfo.augmentCounter();
 				foundCounter++;
