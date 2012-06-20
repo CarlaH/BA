@@ -6,7 +6,6 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -15,8 +14,8 @@ import com.google.common.io.Files;
 public class Controller {
 
 	final String outFile = "patterns.csv";
-	final String inputDir = "D:/Studium/Semester06_So12/Bachelorarbeit/KinectData";
-	//final String inputDir = "KinectData";
+	//final String inputDir = "D:/Studium/Semester06_So12/Bachelorarbeit/KinectData";
+	final String inputDir = "KinectData";
 
 	// Vergroeberung
 	final float faktor = 100f;
@@ -314,7 +313,7 @@ public class Controller {
 						buff.append(lines.get(startI-i+j) + "\n");
 					}
 					// am Ende einer Sequenz eine Sekunde lang Nuller
-					String origin = "0;0;0;" + patternsOccurence.get(startI-i);
+					String origin = "0;0;0;" + (startI-i) + " " + patternsOccurence.get(startI-i);
 					int numJoints = 20;
 
 					String originLine = "0;";
@@ -330,6 +329,8 @@ public class Controller {
 				
 			}
 		}
+		
+		System.out.println("Zeilen gesamt: " + startI);
 		
 		try {
 			Files.write(buff.toString().replace(".", ",").getBytes(), new File(outFile));
