@@ -23,9 +23,9 @@ public class Controller {
 	final DecimalFormat dcf = new DecimalFormat(format);
 	final short framerate = 6;
 	
-	// Laenge Patterns
-	final short minFrames = 6;
-	final short maxFrames = 18;
+	short limit = 4;
+	List<Breakpoint> breakpoints = new ArrayList<Breakpoint>();
+	List<Point[]> pointgroups = new ArrayList<Point[]>();
 	
 	final float[] firstLine = new float[60];
 	private short[] help = null;
@@ -38,35 +38,33 @@ public class Controller {
 	
 	
 	public Controller() {
-		long start = System.currentTimeMillis();
-
+		
 		File[] fileList = initializeFiles();
+		pointgroups.add(readData(fileList));
 		
-		int startI = 0;
-		
-		for (int i = 0; i < fileList.length; i++) {
-			File file = fileList[i];
+		for (int i=0; i<limit; i++) {
 			
-			System.out.println(file.getName() + " - reading " + (i+1)+ "/" + fileList.length + "...");
+			List<Point[]> newpointsgroup = new ArrayList<Point[]>();
 			
-			startI = searchPatterns(file, startI);	
-			validatePatterns(i+1);
+			for (Point[] points: pointgroups) {
+				Breakpoint lastBreak = chooseBreakpoint(points);
+				breakpoints.add(lastBreak);
+				System.out.println(lastBreak);
+				newpointsgroup.addAll(seperatePoints(points, lastBreak, i));
+			}
 			
-			System.out.println("...reading complete");
+			pointgroups = newpointsgroup;
+			int j=1;
+			for (Point[] points: pointgroups) {
+				System.out.println(i + "/" + j + ": " + points.length);
+				j++;
+			}
 		}
 		
-		HashMap<Integer, Short> indices = buildPatternHashMap(fileList.length);
 		
-		// Fake-Patterns: HashMap mit Startindex und Anzahl Frames
-//		HashMap<Integer, Short> indices = new HashMap<Integer, Short>();
-//		indices.put(0, (short)1000);
-//		indices.put(6000, (short)500);
+		//printForViewer(indices, fileList);
 		
-		final long duration = System.currentTimeMillis() - start;
-		
-		printForViewer(indices, fileList);
-		
-		System.out.println("complete! Duration: " + duration);
+		System.out.println("complete!");
 	}
 
 	
@@ -80,81 +78,67 @@ public class Controller {
 	}	
 
 	
-	/**
-	 * searches in data for patterns of lengths between minFrames and maxFrames
-	 * 
-	 */
-	private int searchPatterns(File file, int startI) {
-		
-		ArrayList<short[]> data = initializeFileData(file);
-		List<short[]> suggestedPattern;
-		int size = data.size();
+	private Point[] readData(File[] fileList) {
+		ArrayList<Point> data = new ArrayList<Point>();
+		int amountOfFiles = fileList.length;
+		int fileCounter = 0;
+		short[] help = null;
+		int startI = 0;
+		short takeEachNth = (short) Math.round(30 / framerate);
+		System.out.println("take each nth: " + takeEachNth);
 
-		System.out.println("search patterns...");
-		
-		for (int i = 0; i < size-maxFrames; i++) {	
-			//System.out.println(i+"/"+size);
-			
-			for(short len=maxFrames; len>=minFrames; len--){  // for each Framelength different storedMoves?
-				suggestedPattern = data.subList(i, i+len);
-				boolean isOldPattern = addPattern(suggestedPattern, startI, len);
-				//if(isOldPattern) { break; }
+		for (File file : fileList) {
+			fileCounter++;
+			System.out.println(file.getName() + " - reading " + fileCounter	+ "/" + amountOfFiles + "...");
+			try {
+				// read file content
+				BufferedReader br = new BufferedReader(new FileReader(file));
+				String strLine;
+				boolean initFirst;
+				int i = -1;
+
+				while ((strLine = br.readLine()) != null) {
+					i++;
+					if (i % takeEachNth != 0) {
+						continue;
+					}
+					initFirst = (help == null) ? true : false;
+					short[][] result = processLine(strLine, help, initFirst);
+					short[] dataset = result[0];
+					if (!initFirst) {
+						data.add(new Point(startI, dataset, limit)); // add new Array to data
+					}
+					help = result[1];
+					startI++;
+				}
+
+				System.out.println("...reading complete");
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-			
-			startI++;
-			
 		}
 		
-		return startI;
+		
+		Point[] points = new Point[data.size()];
+		data.toArray(points);
+		System.out.println("Anzahl Punkte: " + points.length);
+		return points;
 		
 	}
 	
-	private ArrayList<short[]> initializeFileData(File file) {
-		System.out.println("initialize File Data...");
-		ArrayList<short[]> data = new ArrayList<short[]>();
-		
-		short takeEachNth = (short) Math.round(30/framerate);
-
-		try {
-			// read file content
-			BufferedReader br = new BufferedReader(new FileReader(file));
-			String strLine;
-			boolean initFirst;
-			int i = -1;
-
-			while ((strLine = br.readLine()) != null) {
-				i++;
-				if(i%takeEachNth != 0) { continue; }
-				initFirst = (help == null) ? true : false;
-				short[][] result = processLine(strLine, help, initFirst);
-				short[] dataset = result[0];
-				if (!initFirst) {
-					data.add(dataset); // add new Array to data
-				}
-				help = result[1];
-			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-	return data;
-		
-	}
-
 	/**
-	 * For one line of a file parses the content and rounds the values
-	 * 
-	 * @param strLine
-	 *            Line
-	 * @param help
-	 *            help-Array containing the values of the line before
-	 * @param initFirst
-	 *            whether it's the first line of the first file or not
-	 * @return short[] containing the values
-	 * @throws ParseException
-	 */
-	private short[][] processLine(String strLine, short[] help, boolean initFirst) throws ParseException {
+	* For one line of a file parses the content and rounds the values
+	*
+	* @param strLine
+	* Line
+	* @param help
+	* help-Array containing the values of the line before
+	* @param initFirst
+	* whether it's the first line of the first file or not
+	* @return short[] containing the values
+	* @throws ParseException
+	*/
+	private short[][] processLine(String strLine, short[] help,	boolean initFirst) throws ParseException {
 		String[] strValues = strLine.split(";");
 		int di = 0;
 		short newValue = 0;
@@ -166,17 +150,19 @@ public class Controller {
 			if (i % 4 == 0)
 				continue; // Koordinate W
 
-			float parsedValue = dcf.parse(strValues[i]).floatValue()	* faktor;
-			
+			float parsedValue = dcf.parse(strValues[i]).floatValue() * faktor;
+
 			if (initFirst) {
 				firstLine[di] = Math.round(parsedValue) / faktor;
 				helpNew[di] = (short) (parsedValue);
-				// System.out.println("help " + di + ": " + s[i] + " => " + d[di]);
+				// System.out.println("help " + di + ": " + s[i] + " => " +
+				// d[di]);
 
 			} else {
 				newValue = (short) (parsedValue);
 				if (Math.abs(newValue - help[di]) > Short.MAX_VALUE) {
-					System.out.println(">>> value too big: " + (newValue - help[di]));
+					System.out.println(">>> value too big: "
+							+ (newValue - help[di]));
 				}
 				dataset[di] = (short) (newValue - help[di]);
 				helpNew[di] = newValue;
@@ -189,6 +175,108 @@ public class Controller {
 		return result;
 	}
 	
+	
+	
+	/**
+	* chooses the Breakpoint to divide the given Points into
+	* two equal halfs under consideration of the standard deviation
+	*/
+	private Breakpoint chooseBreakpoint(Point[] points) {
+		
+		PriorityQueue<Short> coordinates = new PriorityQueue<Short>();
+		
+		double max = 0; short dim = 0;
+		
+		for (short j = 0; j < 60; j++) {
+			for (int i = 0; i < points.length; i++) {
+				coordinates.add(points[i].getCoord(j));
+			}
+			
+			double standardDeviation = calculateSD(coordinates);
+			if (standardDeviation > max) {
+				max = standardDeviation;
+				dim = j;
+			}
+			
+		}
+		
+		System.out.println("SD: " + max);
+		
+		for (int i = 0; i < points.length; i++) {
+			coordinates.add(points[i].getCoord(dim));
+		}
+		while (coordinates.size() > points.length/2) {
+			coordinates.remove();
+		}
+		
+		return new Breakpoint(dim, coordinates.poll());
+	}
+	
+	
+	/**
+	* calculates the standard deviation of the given coordinates
+	*/
+	private double calculateSD(PriorityQueue<Short> coord) {
+		int length = coord.size();
+		short[] coordinates = new short[length];
+		for (int i = 0; i < length; i++) {
+			coordinates[i] = coord.poll().shortValue();
+		}
+		
+		int sum = 0;
+		for(int i=0; i<length; i++) {
+			sum += coordinates[i];
+		}
+		double mean = sum/length;
+		double deviation = 0;
+		for(int i=0; i<length; i++) {
+			double d = coordinates[i]-mean;
+			deviation += (d*d);
+		}
+		deviation = Math.sqrt(deviation/length);
+		
+		return deviation;
+	}
+	
+	
+	
+
+	/**
+	* takes an array of Points, separates it according to the given Breakpoint,
+	* updates their iSAXRep and returns the new two arrays as a list
+	*/
+	private List<Point[]> seperatePoints(Point[] points, Breakpoint lastBreak, int iSAXIndex) {
+		ArrayList<Point> firstHalf = new ArrayList<Point>();
+		ArrayList<Point> secondHalf = new ArrayList<Point>();
+		short dimension = lastBreak.getDimension();
+		short value = lastBreak.getValue();
+		
+		for(Point point: points) {
+			if(point.getCoord(dimension) < value) {
+				// no need to extend ISAXRep as the bit is already 0
+				firstHalf.add(point);
+			} else {
+				point.extendISAXRep(iSAXIndex);
+				secondHalf.add(point);
+			}
+		}
+		
+		Point[] firstH = new Point[firstHalf.size()];
+		firstHalf.toArray(firstH);
+		Point[] secondH = new Point[secondHalf.size()];
+		secondHalf.toArray(secondH);
+		
+		ArrayList<Point[]> ret = new ArrayList<Point[]>();
+		
+		ret.add(firstH);
+		ret.add(secondH);
+		
+		return ret;
+	}
+	
+	
+	
+		
 	/**
 	 * checks whether the suggested Pattern already exists in the storedMoves
 	 * and adds it either by heightening the counter at the fitting position or
@@ -215,22 +303,6 @@ public class Controller {
 		
 	}
 	
-	
-	
-	private void validatePatterns(int filenr) {
-		System.out.println("validate patterns...");
-		
-		System.out.println(storedMoves.size());
-		while(storedMoves.size()>2500) {
-			storedMoves.remove();
-		}
-		
-		System.out.println("Verbleibende Patterns: " + storedMoves.size());
-//		int size = storedMoves.size();
-//		for (int i = 0; i < size; i++) {
-//			System.out.println(storedMoves.poll().getCounter());			
-//		}
-	}
 	
 	
 	
@@ -274,7 +346,13 @@ public class Controller {
 	}
 
 	
-	
+	/**
+	 * neue Variante;
+	 * Durchläuft Datei für Datei und kopiert Zeilen daraus, falls sie zum ersten 
+	 * Auftreten eines gefundenen Patterns gehören
+	 * @param patternIndices
+	 * @param fileList
+	 */
 	private void printForViewer(HashMap<Integer, Short> patternIndices, File[] fileList) {
 		System.out.println("print patterns for viewer...");
 		
@@ -342,85 +420,6 @@ public class Controller {
 	
 	
 	
-	/**
-	 * Durchlaeuft Vektoren-Array, berechnet jeweils den aktuellen
-	 * Punktdatensatz und schreibt diesen in eine Datei, falls er zu einem
-	 * gefundenen Pattern gehört
-	 * 
-	 * @param patternIndices
-	 *            HashMap die die Position als key und Laenge als value der
-	 *            gefundenen Patterns enthaelt
-	 */
-	//TODO: Debug!
-	private void printForViewerOld(HashMap<Integer, Short> patternIndices, File[] fileList) {
-		System.out.println("print patterns for viewer...");
-		
-		StringBuffer buff = new StringBuffer();
-		int ms = 0;
-		short[] dataset;
-		float[] pointDataset = firstLine.clone();
-//		short repeatLine = 30/framerate;
-		help = null;
-		int startI = 0;
-		
-		for (int f = 0; f < fileList.length; f++) {
-
-			ArrayList<short[]> data = initializeFileData(fileList[f]);
-
-			for (int i = 0; i < data.size(); i++) {
-				dataset = data.get(i);
-				pointDataset = calculateNewPoints(pointDataset, dataset);
-
-				if (patternIndices.containsKey(startI)) {
-					float[] patternPoints = pointDataset.clone();
-					int patternEnd = patternIndices.get(startI);
-					for (int j = 0; j < patternEnd; j++) {
-
-						// for (int h = 0; h < repeatLine; h++) { // um auf
-						// framerate 30 zu kommen
-						buff.append(ms + ";");
-						for (int k = 0; k < patternPoints.length; k++) {
-							buff.append(patternPoints[k] + ";");
-							if ((k + 1) % 3 == 0) {
-								buff.append("1;");
-							}
-						}
-						ms += Math.round(1000 / framerate);
-						buff.append("\n");
-						// }
-
-						if (i+j+1 == data.size()) { break; }
-						dataset = data.get(i + j + 1);
-						patternPoints = calculateNewPoints(patternPoints,
-								dataset);
-					}
-
-					// am Ende einer Sequenz eine Sekunde lang Nuller
-					String origin = "0;0;0;1";
-					int numJoints = 20;
-
-					String originLine = "0;";
-					for (int j = 0; j < numJoints - 1; j++) {
-						originLine += origin + ";";
-					}
-					originLine += origin + "\n";
-
-					for (int j = 0; j < framerate; j++) {
-						buff.append(originLine);
-					}
-
-				}
-				startI++;
-			}
-		}
-		
-		try {
-			Files.write(buff.toString().getBytes(), new File(outFile));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-	}
 
 	/**
 	 * Calculates the new Joints
