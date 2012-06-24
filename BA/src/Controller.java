@@ -6,6 +6,7 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -192,7 +193,7 @@ public class Controller {
 				coordinates.add(points[i].getCoord(j));
 			}
 			
-			double standardDeviation = calculateSD(coordinates);
+			double standardDeviation = calculateEntropy(coordinates);
 			if (standardDeviation > max) {
 				max = standardDeviation;
 				dim = j;
@@ -200,7 +201,7 @@ public class Controller {
 			
 		}
 		
-		System.out.println("SD: " + max);
+		System.out.println("Entropy: " + max);
 		
 		for (int i = 0; i < points.length; i++) {
 			coordinates.add(points[i].getCoord(dim));
@@ -237,6 +238,37 @@ public class Controller {
 		
 		return deviation;
 	}
+	
+	
+	/**
+	 * calculates the Entropy of the given coordinates
+	 * Berechnung: Wahrscheinlichkeit p jedes "Zeichens", also jedes Wertes, 
+	 * dann jeweils p*log2(p), summiere das alles auf und negiere
+	 */
+	private double calculateEntropy(PriorityQueue<Short> coord) {
+		double entropy = 0.0;
+		double amount = coord.size();
+		
+		HashMap<Short,Integer> occur = new HashMap<Short, Integer>();
+		
+		while (coord.size() > 0) {
+			short value = coord.poll();
+			if (occur.containsKey(value)) {
+				occur.put(value, occur.get(value)+1);
+			} else {
+				occur.put(value, 1);
+			}
+		}
+		
+		for (Short value : occur.keySet()) {
+			double prob = occur.get(value)/amount;
+			entropy = entropy + (prob* (Math.log(prob)/Math.log(2)));
+		}
+		entropy = - entropy;
+		
+		return entropy;
+	}
+	
 	
 	
 	
