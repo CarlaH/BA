@@ -193,9 +193,9 @@ public class Controller {
 				coordinates.add(points[i].getCoord(j));
 			}
 			
-			double standardDeviation = calculateEntropy(coordinates);
-			if (standardDeviation > max) {
-				max = standardDeviation;
+			double entropy = calculateEntropy(coordinates);
+			if (entropy > max) {
+				max = entropy;
 				dim = j;
 			}
 			
