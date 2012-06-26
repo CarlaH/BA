@@ -24,7 +24,7 @@ public class Controller {
 	final DecimalFormat dcf = new DecimalFormat(format);
 	final short framerate = 6;
 	
-	short limit = 4;
+	short limit = 3;
 	List<Breakpoint> breakpoints = new ArrayList<Breakpoint>();
 	List<Point[]> pointgroups = new ArrayList<Point[]>();
 	
@@ -193,13 +193,15 @@ public class Controller {
 				coordinates.add(points[i].getCoord(j));
 			}
 			
-			double entropy = calculateEntropy(coordinates);
-			if (entropy > max) {
-				max = entropy;
+			double mean = calculateDistZeroMean(coordinates);
+			if (mean > max) {
+				max = mean;
 				dim = j;
 			}
 			
 		}
+		
+		System.out.println(max);
 		
 		for (int i = 0; i < points.length; i++) {
 			coordinates.add(points[i].getCoord(dim));
@@ -269,6 +271,29 @@ public class Controller {
 		entropy = - entropy;
 		
 		return entropy;
+	}
+	
+	/**
+	* calculates the standard deviation of the given coordinates
+	*/
+	private double calculateDistZeroMean(PriorityQueue<Short> coord) {
+		double length = coord.size();
+		short[] coordinates = new short[(int)length];
+		for (int i = 0; i < length; i++) {
+			coordinates[i] = coord.poll().shortValue();
+		}
+		
+		double sum = 0;
+		for(int i=0; i<length; i++) {
+			sum += coordinates[i];
+		}
+		double mean = sum/length;
+		
+		if (mean < 0) {
+			mean = - mean;
+		}
+		
+		return mean;
 	}
 	
 	
