@@ -201,8 +201,6 @@ public class Controller {
 			
 		}
 		
-		System.out.println("Entropy: " + max);
-		
 		for (int i = 0; i < points.length; i++) {
 			coordinates.add(points[i].getCoord(dim));
 		}
@@ -248,17 +246,21 @@ public class Controller {
 	private double calculateEntropy(PriorityQueue<Short> coord) {
 		double entropy = 0.0;
 		double amount = coord.size();
+		int nullcounter = 0;
 		
 		HashMap<Short,Integer> occur = new HashMap<Short, Integer>();
 		
 		while (coord.size() > 0) {
 			short value = coord.poll();
+			if (value == 0) { nullcounter++; }
 			if (occur.containsKey(value)) {
 				occur.put(value, occur.get(value)+1);
 			} else {
 				occur.put(value, 1);
 			}
 		}
+		
+		System.out.println("percentage 0: " + (nullcounter/amount)*100 + " %");
 		
 		for (Short value : occur.keySet()) {
 			double prob = occur.get(value)/amount;
