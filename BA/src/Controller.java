@@ -25,7 +25,7 @@ public class Controller {
 	final DecimalFormat dcf = new DecimalFormat(format);
 	final short framerate = 6;
 	
-	short limit = 55;
+	short limit = 52;
 	int count = 0;
 	List<Breakpoint> breakpoints = new ArrayList<Breakpoint>();
 	List<Point[]> pointgroups = new ArrayList<Point[]>();
@@ -261,9 +261,10 @@ public class Controller {
 		count++;
 		
 		if (count % 2 == 0) {
+			breakpoints.get(breakpoints.size()-1).setThreshBit(false);
 			for(Point point: points) {
 				if (point.getCoord(dimension)==value) { counterborder++; }
-				if (point.getCoord(dimension) > value) {
+				if (point.getCoord(dimension) < value) {
 					point.extendISAXRep(false);
 					firstHalf.add(point);
 				} else {
@@ -272,9 +273,10 @@ public class Controller {
 				}
 			}
 		} else {
+			breakpoints.get(breakpoints.size()-1).setThreshBit(true);
 			for(Point point: points) {
 				if (point.getCoord(dimension)==value) { counterborder++; }
-				if (point.getCoord(dimension) < value) {
+				if (point.getCoord(dimension) <= value) {
 					point.extendISAXRep(false);
 					firstHalf.add(point);
 				} else {

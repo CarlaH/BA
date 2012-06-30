@@ -18,6 +18,10 @@ public class Breakpoint {
 	 * the next bit after this prefix is defined by this breakpoint
 	 */
 	private List<Boolean> group;
+	/**
+	 * the bit that is assigned to points lying on the threshold
+	 */
+	private boolean thresholdvalue;
 	
 	public Breakpoint(short dimension, short value) {
 		this.dimension = dimension;
@@ -45,6 +49,10 @@ public class Breakpoint {
 		this.group = group;
 	}
 	
+	public void setThreshBit(boolean is) {
+		this.thresholdvalue = is;
+	}
+	
 	public String toString() {
 		String str = "group: ";
 		
@@ -56,7 +64,12 @@ public class Breakpoint {
 			}
 		}
 		
-		str = str + "; dimension: " +  dimension + "; value: " + value;
+		str = str + "; dimension: " +  dimension + "; value: " + value + "; threshold bit: ";
+		if (thresholdvalue) {
+			str = str + "1";
+		} else {
+			str = str + "0";
+		}
 		
 		return str;
 	}
