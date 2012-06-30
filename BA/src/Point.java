@@ -1,15 +1,17 @@
+import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.List;
 
 /**
 * represents one Point in 60-dimensional space, that is
 * one frame (vector) of the data; contains the original index,
 * the 60 values and the iSAX-representation that is build
 */
-public class Point {
+public class Point implements Comparable<Point>{
 	
 	private int index;
 	private short[] values;
-	private BitSet iSAXRep;
+	private List<Boolean> iSAXRep;
 	
 	/**
 	 * generates a new point
@@ -20,14 +22,14 @@ public class Point {
 	public Point(int index, short[] values, short iSAXlength) {
 		this.index = index;
 		this.values = values;
-		this.iSAXRep = new BitSet(iSAXlength);
+		this.iSAXRep = new ArrayList<Boolean>();
 	}
 	
 	/**
 	* sets the bit at the specified position to 1
 	*/
-	public void extendISAXRep(int iSAXIndex) {
-		iSAXRep.set(iSAXIndex);
+	public void extendISAXRep(boolean is) {
+		iSAXRep.add(is);
 	}
 	
 	public int getIndex() {
@@ -38,8 +40,33 @@ public class Point {
 		return values[i];
 	}
 	
+	public List<Boolean> getiSAXRep() {
+		return iSAXRep;
+	}
+	
 	public String toString() {
-		return this.index + ": " + values[0] + "/" +  values[1] + "/" + values[2] + "; iSAX: " + iSAXRep.toString();
+		String str = this.index + ": ";
+		
+		for (int i = 0; i < iSAXRep.size(); i++) {
+			if (iSAXRep.get(i)) {
+				str = str + "1";
+			} else {
+				str = str + "0";
+			}
+		}
+		
+		return str;
+	}
+	
+	@Override
+	public int compareTo(Point o) {
+		if (this.index < o.getIndex()) {
+			return -1;
+		} else if (this.index == o.getIndex()){
+			return 0;
+		} else {
+			return 1;
+		}
 	}
 
 }

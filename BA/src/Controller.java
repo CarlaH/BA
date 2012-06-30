@@ -14,9 +14,10 @@ import com.google.common.io.Files;
 
 public class Controller {
 
-	final String outFile = "patterns.csv";
-	//final String inputDir = "D:/Studium/Semester06_So12/Bachelorarbeit/KinectData";
-	final String inputDir = "KinectData";
+	final String outFile = "data_encoded.txt";
+	final String outFileBreaks = "breakpoints.txt";
+	final String inputDir = "D:/Studium/Semester06_So12/Bachelorarbeit/KinectData";
+	//final String inputDir = "KinectData";
 
 	// Vergroeberung
 	final float faktor = 100f;
@@ -24,7 +25,8 @@ public class Controller {
 	final DecimalFormat dcf = new DecimalFormat(format);
 	final short framerate = 6;
 	
-	short limit = 3;
+	short limit = 55;
+	int count = 0;
 	List<Breakpoint> breakpoints = new ArrayList<Breakpoint>();
 	List<Point[]> pointgroups = new ArrayList<Point[]>();
 	
@@ -32,11 +34,6 @@ public class Controller {
 	private short[] help = null;
 	private PriorityQueue<PatternInfo> storedMoves = new PriorityQueue<PatternInfo>();
 
-	// TODO to be removed soon
-	int foundCounter = 0;
-	HashMap<Integer, Integer> patternsOccurence = new HashMap<Integer, Integer>();
-
-	
 	
 	public Controller() {
 		
@@ -45,25 +42,36 @@ public class Controller {
 		
 		for (int i=0; i<limit; i++) {
 			
-			List<Point[]> newpointsgroup = new ArrayList<Point[]>();
+			//List<Point[]> newpointsgroup = new ArrayList<Point[]>();
 			
-			for (Point[] points: pointgroups) {
-				Breakpoint lastBreak = chooseBreakpoint(points);
-				breakpoints.add(lastBreak);
-				System.out.println(lastBreak);
-				newpointsgroup.addAll(seperatePoints(points, lastBreak, i));
+			int maxLength = 0; int index = 0;
+			for (int j=0; j< pointgroups.size(); j++) {
+				Point[] points = pointgroups.get(j);
+				if (points.length > maxLength) {
+					maxLength = points.length;
+					index = j;
+				}
 			}
 			
-			pointgroups = newpointsgroup;
+			Point[] points = pointgroups.get(index);
+			pointgroups.remove(index);
+			
+			Breakpoint lastBreak = chooseBreakpoint(points);
+			breakpoints.add(lastBreak);
+			System.out.println(lastBreak);
+			pointgroups.addAll(seperatePoints(points, lastBreak));
+			
+			
 			int j=1;
-			for (Point[] points: pointgroups) {
-				System.out.println(i + "/" + j + ": " + points.length);
+			for (Point[] pointgroup: pointgroups) {
+				System.out.println(i + "/" + j + ": " + pointgroup.length);
 				j++;
 			}
 		}
 		
 		
-		//printForViewer(indices, fileList);
+		printPoints(pointgroups);
+		printBreakpoints(breakpoints);
 		
 		System.out.println("complete!");
 	}
@@ -193,15 +201,13 @@ public class Controller {
 				coordinates.add(points[i].getCoord(j));
 			}
 			
-			double mean = calculateDistZeroMean(coordinates);
-			if (mean > max) {
-				max = mean;
+			double sd = calculateSD(coordinates);
+			if (sd > max) {
+				max = sd;
 				dim = j;
 			}
 			
 		}
-		
-		System.out.println(max);
 		
 		for (int i = 0; i < points.length; i++) {
 			coordinates.add(points[i].getCoord(dim));
@@ -210,7 +216,7 @@ public class Controller {
 			coordinates.remove();
 		}
 		
-		return new Breakpoint(dim, coordinates.poll());
+		return new Breakpoint(dim, coordinates.poll(), points[0].getiSAXRep());
 	}
 	
 	
@@ -240,85 +246,45 @@ public class Controller {
 	}
 	
 	
-	/**
-	 * calculates the Entropy of the given coordinates
-	 * Berechnung: Wahrscheinlichkeit p jedes "Zeichens", also jedes Wertes, 
-	 * dann jeweils p*log2(p), summiere das alles auf und negiere
-	 */
-	private double calculateEntropy(PriorityQueue<Short> coord) {
-		double entropy = 0.0;
-		double amount = coord.size();
-		int nullcounter = 0;
-		
-		HashMap<Short,Integer> occur = new HashMap<Short, Integer>();
-		
-		while (coord.size() > 0) {
-			short value = coord.poll();
-			if (value == 0) { nullcounter++; }
-			if (occur.containsKey(value)) {
-				occur.put(value, occur.get(value)+1);
-			} else {
-				occur.put(value, 1);
-			}
-		}
-		
-		System.out.println("percentage 0: " + (nullcounter/amount)*100 + " %");
-		
-		for (Short value : occur.keySet()) {
-			double prob = occur.get(value)/amount;
-			entropy = entropy + (prob* (Math.log(prob)/Math.log(2)));
-		}
-		entropy = - entropy;
-		
-		return entropy;
-	}
-	
-	/**
-	* calculates the standard deviation of the given coordinates
-	*/
-	private double calculateDistZeroMean(PriorityQueue<Short> coord) {
-		double length = coord.size();
-		short[] coordinates = new short[(int)length];
-		for (int i = 0; i < length; i++) {
-			coordinates[i] = coord.poll().shortValue();
-		}
-		
-		double sum = 0;
-		for(int i=0; i<length; i++) {
-			sum += coordinates[i];
-		}
-		double mean = sum/length;
-		
-		if (mean < 0) {
-			mean = - mean;
-		}
-		
-		return mean;
-	}
-	
-	
-	
 	
 
 	/**
 	* takes an array of Points, separates it according to the given Breakpoint,
 	* updates their iSAXRep and returns the new two arrays as a list
 	*/
-	private List<Point[]> seperatePoints(Point[] points, Breakpoint lastBreak, int iSAXIndex) {
+	private List<Point[]> seperatePoints(Point[] points, Breakpoint lastBreak) {
 		ArrayList<Point> firstHalf = new ArrayList<Point>();
 		ArrayList<Point> secondHalf = new ArrayList<Point>();
 		short dimension = lastBreak.getDimension();
 		short value = lastBreak.getValue();
+		int counterborder = 0;
+		count++;
 		
-		for(Point point: points) {
-			if(point.getCoord(dimension) < value) {
-				// no need to extend ISAXRep as the bit is already 0
-				firstHalf.add(point);
-			} else {
-				point.extendISAXRep(iSAXIndex);
-				secondHalf.add(point);
+		if (count % 2 == 0) {
+			for(Point point: points) {
+				if (point.getCoord(dimension)==value) { counterborder++; }
+				if (point.getCoord(dimension) > value) {
+					point.extendISAXRep(false);
+					firstHalf.add(point);
+				} else {
+					point.extendISAXRep(true);
+					secondHalf.add(point);
+				}
+			}
+		} else {
+			for(Point point: points) {
+				if (point.getCoord(dimension)==value) { counterborder++; }
+				if (point.getCoord(dimension) < value) {
+					point.extendISAXRep(false);
+					firstHalf.add(point);
+				} else {
+					point.extendISAXRep(true);
+					secondHalf.add(point);
+				}
 			}
 		}
+		
+		System.out.println(counterborder);
 		
 		Point[] firstH = new Point[firstHalf.size()];
 		firstHalf.toArray(firstH);
@@ -335,148 +301,49 @@ public class Controller {
 	
 	
 	
+	private void printPoints(List<Point[]> pointgroups) {
+		System.out.println("print point...");
 		
-	/**
-	 * checks whether the suggested Pattern already exists in the storedMoves
-	 * and adds it either by heightening the counter at the fitting position or
-	 * by adding a new entry
-	 * @param suggestedPattern new Move that could be a pattern
-	 * @param storedMoves already found moves
-	 * @return true if move was found, false if a new entry was created
-	 */
-	private boolean addPattern(List<short[]> suggestedPattern, int startI, short len) {
-		for (PatternInfo patInfo : storedMoves){
-			
-			if (patInfo.getLength()!=len) { continue; }  // check size
-			
-			if (patInfo.moveEquals(suggestedPattern)) {
-				patInfo.augmentCounter();
-				foundCounter++;
-				return true;
-			}
-			
-		}
-
-		storedMoves.add(new PatternInfo(startI, len, 1, suggestedPattern));
-		return false;
+		PriorityQueue<Point> points = new PriorityQueue<Point>();
 		
-	}
-	
-	
-	
-	
-	
-	private HashMap<Integer, Short> buildPatternHashMap(int filenr) {
-		HashMap<Integer, Short> indices = new HashMap<Integer, Short>();
-	
-		PatternInfo moveInfos;
-		
-		while(storedMoves.size() > 15){
-			storedMoves.remove();
-		}
-		
-		while (!storedMoves.isEmpty()) {
-			moveInfos = storedMoves.poll();
-			
-			if(moveInfos.getCounter()>filenr){
-				int startI = moveInfos.getStartIndex();
-				/* if there is already a pattern with a near startI
-				 * remove it - the new pattern is guaranteed to have 
-				 * a higher counter and the patterns are almost
-				 * the same
-				 */
-				indices.remove(startI-2);
-				indices.remove(startI-1);
-				indices.remove(startI+1);
-				indices.remove(startI+2);
-				indices.put(moveInfos.getStartIndex(), moveInfos.getLength());					
-				
-				patternsOccurence.remove(startI-2);
-				patternsOccurence.remove(startI-1);
-				patternsOccurence.remove(startI+1);
-				patternsOccurence.remove(startI+2);
-				patternsOccurence.put(startI, moveInfos.getCounter());
-				
+		for (Point[] pointarr : pointgroups) {
+			for (Point point : pointarr) {
+				points.add(point);
 			}
 		}
-		
-		
-		return indices;
-	}
-
-	
-	/**
-	 * neue Variante;
-	 * Durchläuft Datei für Datei und kopiert Zeilen daraus, falls sie zum ersten 
-	 * Auftreten eines gefundenen Patterns gehören
-	 * @param patternIndices
-	 * @param fileList
-	 */
-	private void printForViewer(HashMap<Integer, Short> patternIndices, File[] fileList) {
-		System.out.println("print patterns for viewer...");
 		
 		StringBuffer buff = new StringBuffer();
 		int startI = 0;
-		short takeEachNth = (short) Math.round(30/framerate);
-		HashMap<Integer, String> lines;
-		
-		for (int f = 0; f < fileList.length; f++) {
-			lines = new HashMap<Integer, String>();
-			try {
-				// read file content
-				BufferedReader br = new BufferedReader(new FileReader(fileList[f]));
-				System.out.println("read file " + fileList[f]);
-				String strLine;
-				int i = 0;
-				
-
-				while ((strLine = br.readLine()) != null) {
-					i++;
-					if(i%takeEachNth != 0) { continue; }
-					lines.put(startI, strLine);
-					startI++;
-				}
-				
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			
-			for (int i = lines.size(); i>0 ; i--) {
-
-				if (patternIndices.containsKey(startI-i)) {
-					System.out.println("...contains: " + (startI-i));
-					
-					for (int j = 0; j < patternIndices.get(startI-i); j++) {
-						buff.append(lines.get(startI-i+j) + "\n");
-					}
-					// am Ende einer Sequenz eine Sekunde lang Nuller
-					String origin = "0;0;0;" + (startI-i) + " " + patternsOccurence.get(startI-i);
-					int numJoints = 20;
-
-					String originLine = "0;";
-					for (int j = 0; j < numJoints - 1; j++) {
-						originLine += origin + ";";
-					}
-					originLine += origin + "\n";
-
-					for (int j = 0; j < framerate; j++) {
-						buff.append(originLine);
-					}
-				}
-				
-			}
+		while(points.peek()!=null) {
+			buff.append(points.poll().toString() + "\n");
+			startI++;
 		}
-		
+				
 		System.out.println("Zeilen gesamt: " + startI);
 		
 		try {
-			Files.write(buff.toString().replace(".", ",").getBytes(), new File(outFile));
+			Files.write(buff.toString().replace(".", ",").getBytes(), new File(framerate + "fps_" + outFile));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
 	}
 	
+	
+	private void printBreakpoints(List<Breakpoint> breakpoints) {
+		System.out.println("print breakpoints...");
+		
+		StringBuffer buff = new StringBuffer();
+		
+		for (Breakpoint breakpoint : breakpoints) {
+			buff.append(breakpoint.toString()  + "\n");
+		}
+		
+		try {
+			Files.write(buff.toString().replace(".", ",").getBytes(), new File(outFileBreaks));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 	
 	
 
