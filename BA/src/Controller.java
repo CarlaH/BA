@@ -216,7 +216,12 @@ public class Controller {
 			coordinates.remove();
 		}
 		
-		return new Breakpoint(dim, coordinates.poll(), points[0].getiSAXRep());
+		List<Boolean> iSAXRep = new ArrayList<Boolean>();
+		for (boolean bool: points[0].getiSAXRep()) {
+			iSAXRep.add(bool);
+		}
+		
+		return new Breakpoint(dim, coordinates.poll(), iSAXRep);
 	}
 	
 	
